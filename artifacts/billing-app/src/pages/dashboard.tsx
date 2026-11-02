@@ -309,12 +309,12 @@ export default function Dashboard() {
       {/* Top Stat Cards */}
       {isAdmin ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <StatCard title="Total Products" value={formatNumber(adminData?.totalProducts || 0)} icon={Package} loading={adminLoading} color="indigo" />
-          <StatCard title="Total Inventory" value={formatNumber(adminData?.totalInventory || 0)} icon={Activity} loading={adminLoading} color="blue" />
-          <StatCard title="Filtered Total Orders" value={formatNumber(analyticsData?.summary?.totalOrders ?? adminData?.totalOrders ?? 0)} icon={ShoppingCart} loading={analyticsLoading} color="purple" />
-          <StatCard title="Filtered Total Revenue" value={formatCurrency(analyticsData?.summary?.totalRevenue ?? adminData?.monthlySales ?? 0)} icon={TrendingUp} loading={analyticsLoading} color="emerald" />
-          <StatCard title="Filtered Total Paid" value={formatCurrency(analyticsData?.summary?.totalPaid ?? 0)} icon={TrendingUp} loading={analyticsLoading} color="teal" />
-          <StatCard title="Filtered Pending Balance" value={formatCurrency(analyticsData?.summary?.totalPending ?? 0)} icon={AlertTriangle} loading={analyticsLoading} color="rose" />
+          <StatCard title="Total Products" value={formatNumber(adminData?.totalProducts || 0)} icon={Package} loading={adminLoading && !adminData} color="indigo" />
+          <StatCard title="Total Inventory" value={formatNumber(adminData?.totalInventory || 0)} icon={Activity} loading={adminLoading && !adminData} color="blue" />
+          <StatCard title="Filtered Total Orders" value={formatNumber(analyticsData?.summary?.totalOrders ?? adminData?.totalOrders ?? 0)} icon={ShoppingCart} loading={analyticsLoading && !analyticsData} color="purple" />
+          <StatCard title="Filtered Total Revenue" value={formatCurrency(analyticsData?.summary?.totalRevenue ?? adminData?.monthlySales ?? 0)} icon={TrendingUp} loading={analyticsLoading && !analyticsData} color="emerald" />
+          <StatCard title="Filtered Total Paid" value={formatCurrency(analyticsData?.summary?.totalPaid ?? 0)} icon={TrendingUp} loading={analyticsLoading && !analyticsData} color="teal" />
+          <StatCard title="Filtered Pending Balance" value={formatCurrency(analyticsData?.summary?.totalPending ?? 0)} icon={AlertTriangle} loading={analyticsLoading && !analyticsData} color="rose" />
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-3">

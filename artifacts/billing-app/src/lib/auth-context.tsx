@@ -22,7 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   const isAuthenticated = !!user;
-  const isAdmin = user?.role === "admin" || true;
+  const isAdmin = !!user && (user.role === "admin" || user.username === "admin");
 
   useEffect(() => {
     // Only redirect to login for protected routes

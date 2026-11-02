@@ -12,6 +12,7 @@ import { pool } from "@workspace/db";
 const app: Express = express();
 
 app.set("trust proxy", 1);
+app.set("etag", false);
 
 const PgSession = connectPgSimple(session);
 
@@ -60,6 +61,14 @@ app.use(
     },
   }),
 );
+
+// Ensure real-time live data without stale browser 304 caching
+app.use("/api", (req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  next();
+});
 
 app.use("/api", router);
 
