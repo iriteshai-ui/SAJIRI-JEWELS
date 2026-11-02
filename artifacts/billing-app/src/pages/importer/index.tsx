@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { AppLayout } from "@/components/layout/app-layout";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api-client";
 import {
@@ -215,8 +214,7 @@ export default function ImporterStudio() {
   });
 
   return (
-    <AppLayout>
-      <div className="p-6 sm:p-8 space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
           <div>
@@ -515,6 +513,5 @@ export default function ImporterStudio() {
           </div>
         )}
       </div>
-    </AppLayout>
   );
 }
