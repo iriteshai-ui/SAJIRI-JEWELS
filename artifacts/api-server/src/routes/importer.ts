@@ -49,19 +49,23 @@ function mapToInternalCategory(productType: string, tags: string[] = []): string
   return "Other Fashion Accessories";
 }
 
-// Clean title: removes "PRAO " prefix and supplier codes
+// Clean title: replaces "PRAO" with "SAJRI"
 function cleanTitle(rawTitle: string): string {
-  return rawTitle
-    .replace(/^prao\s+/i, "")
+  let title = rawTitle.replace(/\bprao\b/gi, "SAJRI").trim();
+  if (!/^sajri\b/i.test(title)) {
+    title = `SAJRI ${title}`;
+  }
+  return title
     .replace(/\banti-tarnish\b/gi, "Anti-Tarnish")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
-// Clean description: removes any supplier branding or links
+// Clean description: replaces any supplier branding with SAJRI
 function cleanDescription(rawHtml: string): string {
   if (!rawHtml) return "";
   return rawHtml
-    .replace(/prao/gi, "")
+    .replace(/\bprao\b/gi, "SAJRI")
     .replace(/<a\b[^>]*>(.*?)<\/a>/gi, "$1") // strip hyperlinks
     .trim();
 }

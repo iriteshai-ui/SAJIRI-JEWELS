@@ -40,6 +40,7 @@ export default function Catalogue() {
   const [inStockOnly, setInStockOnly] = useState<boolean>(false);
   const [sortOption, setSortOption] = useState<string>("newest");
   const [mobileFilterOpen, setMobileFilterOpen] = useState<boolean>(false);
+  const [displayLimit, setDisplayLimit] = useState<number>(100);
 
   // Fetch Categories
   const { data: categories = [] } = useQuery({
@@ -59,10 +60,11 @@ export default function Catalogue() {
       selectedMaterial,
       inStockOnly,
       sortOption,
+      displayLimit,
     ],
     queryFn: async () => {
       const params: Record<string, any> = {
-        limit: 36,
+        limit: displayLimit,
         sort: sortOption,
       };
       if (selectedCategory !== "all") params.category = selectedCategory;
@@ -395,6 +397,22 @@ export default function Catalogue() {
                 </Link>
               );
             })}
+          </div>
+        )}
+
+        {/* Load More Button */}
+        {!isLoading && products.length < totalCount && (
+          <div className="flex flex-col items-center justify-center mt-12 gap-3">
+            <p className="text-xs text-neutral-500 font-mono">
+              Showing {products.length} of {totalCount} jewellery pieces
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => setDisplayLimit((prev) => prev + 100)}
+              className="px-8 py-2.5 h-11 text-xs font-bold tracking-wider uppercase border-amber-600/40 text-amber-900 dark:text-amber-200 hover:bg-amber-500/10 cursor-pointer shadow-xs rounded-full transition-all"
+            >
+              Load More Jewellery ({totalCount - products.length} Remaining)
+            </Button>
           </div>
         )}
       </main>
