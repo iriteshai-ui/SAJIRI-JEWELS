@@ -11,16 +11,16 @@ export async function seedIfEmpty() {
 
   if (Number(userCount) > 0) return;
 
-  logger.info("No users found — seeding Rits Jewellers default data...");
+  logger.info("No users found — seeding SAJIRI JEWELS default data...");
 
-  const adminPasswordHash = await bcrypt.hash("Rits@123", 10);
+  const adminPasswordHash = await bcrypt.hash("Sajiri@123", 10);
 
   const [adminUser] = await db
     .insert(usersTable)
     .values({
-      name: "Rits Administrator",
+      name: "Sajiri Administrator",
       username: "admin",
-      email: "admin@ritsjewellers.com",
+      email: "admin@sajirijewels.com",
       passwordHash: adminPasswordHash,
       role: "admin",
       isActive: true,
@@ -205,5 +205,5 @@ export async function seedIfEmpty() {
     });
   }
 
-  logger.info("Startup seeding complete: Rits Jewellers admin and inventory ready.");
+  logger.info("Startup seeding complete: SAJIRI JEWELS admin and inventory ready.");
 }

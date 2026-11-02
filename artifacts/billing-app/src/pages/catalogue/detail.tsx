@@ -81,7 +81,7 @@ export default function CatalogueDetail() {
     if (navigator.share) {
       navigator.share({
         title: product.name,
-        text: `Check out this exquisite piece at Rits Jewellers: ${product.name}`,
+        text: `Check out this exquisite piece at SAJIRI JEWELS: ${product.name}`,
         url: window.location.href,
       });
     } else {
@@ -94,7 +94,7 @@ export default function CatalogueDetail() {
   };
 
   const whatsappMessage = encodeURIComponent(
-    `Hello Rits Jewellers! I am interested in purchasing "${product.name}" (Ref: ${product.id}, Price: ₹${product.price.toLocaleString("en-IN")}). Is it currently available?`
+    `Hello SAJIRI JEWELS! I am interested in purchasing "${product.name}" (Ref: ${product.id}, Price: ₹${product.price.toLocaleString("en-IN")}). Is it currently available?`
   );
 
   return (
@@ -112,7 +112,7 @@ export default function CatalogueDetail() {
               <Gem className="w-4 h-4" />
             </div>
             <span className="font-serif font-bold text-lg tracking-wider text-neutral-900">
-              RITS JEWELLERS
+              SAJIRI JEWELS
             </span>
           </Link>
 

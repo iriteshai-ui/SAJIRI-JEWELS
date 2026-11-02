@@ -1,5 +1,4 @@
--- ============================================================================
--- Migration: Create all tables for Rits Jewellers Billing & Inventory System
+-- Migration: Create all tables for SAJIRI JEWELS Billing & Inventory System
 -- Safe to re-run: uses IF NOT EXISTS throughout.
 -- ============================================================================
 

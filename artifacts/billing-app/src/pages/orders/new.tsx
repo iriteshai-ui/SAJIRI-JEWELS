@@ -372,7 +372,7 @@ export default function NewOrder() {
             </div>
             <div className="flex items-center justify-center gap-1.5 text-xs font-serif uppercase tracking-widest text-primary mb-1">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Rits Jewellers</span>
+              <span>SAJIRI JEWELS</span>
             </div>
             <CardTitle className="text-2xl font-serif font-bold text-foreground">
               Order Created & Invoice Generated!

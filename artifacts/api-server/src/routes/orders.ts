@@ -17,7 +17,7 @@ async function generateInvoiceNumber(): Promise<string> {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   const yyyymmdd = `${year}${month}${day}`;
-  const prefix = `RJ-INV-${yyyymmdd}-`;
+  const prefix = `SJ-INV-${yyyymmdd}-`;
 
   const existingOrders = await db
     .select({ invoiceNumber: ordersTable.invoiceNumber })
@@ -523,7 +523,7 @@ router.get("/orders/:id/invoice", requireAuth, async (req, res): Promise<void> =
   doc.rect(35, 35, 525, 4).fill("#D4AF37");
 
   // Shop Name & Details
-  doc.fillColor("#D4AF37").fontSize(18).font("Helvetica-Bold").text("RITS JEWELLERS", 50, 48);
+  doc.fillColor("#D4AF37").fontSize(18).font("Helvetica-Bold").text("SAJIRI JEWELS", 50, 48);
   doc.fillColor("#E2E8F0").fontSize(8).font("Helvetica").text("Timeless Elegance & Pure Craftsmanship", 50, 70);
   doc.fillColor("#94A3B8").fontSize(7.5).font("Helvetica").text(
     "Gold Souk Market, Main Road, Amravati - 444601 | Mob: +91 98765 43210 | GSTIN: 27AABCR1234F1Z8",
@@ -682,13 +682,13 @@ router.get("/orders/:id/invoice", requireAuth, async (req, res): Promise<void> =
 
   doc.moveTo(sigX, sigY).lineTo(sigX + sigWidth, sigY).strokeColor("#94A3B8").stroke();
   doc.fillColor("#0F172A").font("Helvetica-Bold").fontSize(9).text("Authorized Signatory", sigX, sigY + 6, { width: sigWidth, align: "center" });
-  doc.fillColor("#D97706").font("Helvetica").fontSize(8).text("(RITS JEWELLERS)", sigX, sigY + 18, { width: sigWidth, align: "center" });
+  doc.fillColor("#D97706").font("Helvetica").fontSize(8).text("(SAJIRI JEWELS)", sigX, sigY + 18, { width: sigWidth, align: "center" });
 
   // Footer Note
   currentY = Math.max(sigY + 40, 770);
   doc.moveTo(35, currentY).lineTo(560, currentY).strokeColor("#E2E8F0").stroke();
   doc.fillColor("#64748B").fontSize(7.5).font("Helvetica").text(
-    "Thank you for choosing Rits Jewellers! Where Purity Meets Perfection.",
+    "Thank you for choosing SAJIRI JEWELS! Where Purity Meets Perfection.",
     35,
     currentY + 6,
     { align: "center", width: 525 }

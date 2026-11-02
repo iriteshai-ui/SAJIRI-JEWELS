@@ -3,24 +3,24 @@ import { usersTable, productsTable, inventoryTable, metalRatesTable } from "./sc
 import bcrypt from "bcryptjs";
 
 async function main() {
-  console.log("Seeding Rits Jewellers database...");
+  console.log("Seeding SAJIRI JEWELS database...");
 
   // 1. Create Default Admin User
-  const adminPasswordHash = await bcrypt.hash("Rits@123", 10);
+  const adminPasswordHash = await bcrypt.hash("Sajiri@123", 10);
 
   const [adminUser] = await db
     .insert(usersTable)
     .values({
-      name: "Rits Administrator",
+      name: "Sajiri Administrator",
       username: "admin",
-      email: "admin@ritsjewellers.com",
+      email: "admin@sajirijewels.com",
       passwordHash: adminPasswordHash,
       role: "admin",
       isActive: true,
     })
     .returning();
 
-  console.log(`Created admin user: admin / Rits@123 (ID: ${adminUser.id})`);
+  console.log(`Created admin user: admin / Sajiri@123 (ID: ${adminUser.id})`);
 
   // 2. Seed Live Metal Rates
   await db.insert(metalRatesTable).values({
@@ -264,7 +264,7 @@ async function main() {
   }
 
   console.log(`Successfully seeded ${sampleJewellery.length} jewelry inventory items.`);
-  console.log("Rits Jewellers seed complete!");
+  console.log("SAJIRI JEWELS seed complete!");
 }
 
 main()

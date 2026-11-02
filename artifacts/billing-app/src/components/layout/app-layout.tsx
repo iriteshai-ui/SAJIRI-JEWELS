@@ -78,7 +78,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <Gem className="w-5 h-5" />
             </div>
             <span className="font-serif font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
-              Rits Jewellers
+              SAJIRI JEWELS
             </span>
             <span className="hidden sm:inline-block text-[11px] font-sans font-medium text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 px-2 py-0.5 rounded-full border border-amber-200/60 dark:border-amber-900/40">
               Management Portal

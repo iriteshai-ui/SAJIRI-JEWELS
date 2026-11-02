@@ -84,7 +84,7 @@ export default function Catalogue() {
       <div className="bg-[#1A1A1A] text-amber-100/90 text-xs py-2 px-4 text-center tracking-wider flex items-center justify-center gap-4 border-b border-amber-900/30">
         <span className="flex items-center gap-1.5 font-medium">
           <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-          RITS JEWELLERS • Handcrafted Anti-Tarnish &amp; Waterproof Collections
+          SAJIRI JEWELS • Handcrafted Anti-Tarnish &amp; Waterproof Collections
         </span>
         <span className="hidden md:inline text-amber-400/50">|</span>
         <span className="hidden md:inline text-amber-200/80">
@@ -102,7 +102,7 @@ export default function Catalogue() {
             </div>
             <div>
               <span className="font-serif font-bold text-xl tracking-wider text-neutral-900 group-hover:text-amber-700 transition-colors">
-                RITS JEWELLERS
+                SAJIRI JEWELS
               </span>
               <p className="text-[10px] text-neutral-600 tracking-widest uppercase font-medium">
                 Haute Fashion Jewellery
@@ -405,7 +405,7 @@ export default function Catalogue() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             <div className="space-y-3">
               <span className="font-serif font-bold text-lg text-amber-100 tracking-wider">
-                RITS JEWELLERS
+                SAJIRI JEWELS
               </span>
               <p className="text-xs text-neutral-400 leading-relaxed">
                 Modern anti-tarnish fashion jewellery curated for the contemporary
@@ -448,7 +448,7 @@ export default function Catalogue() {
             </div>
           </div>
           <div className="pt-6 border-t border-neutral-800 text-center text-neutral-500 text-[11px]">
-            &copy; {new Date().getFullYear()} Rits Jewellers. All rights reserved.
+            &copy; {new Date().getFullYear()} SAJIRI JEWELS. All rights reserved.
           </div>
         </div>
       </footer>

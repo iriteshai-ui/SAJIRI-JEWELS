@@ -323,7 +323,7 @@ export default function OrderDetail() {
             <div className="w-56 text-center space-y-1">
               <div className="border-b border-muted-foreground/40 pb-1" />
               <p className="text-xs font-bold text-foreground">Authorized Signature</p>
-              <p className="text-[11px] text-muted-foreground font-medium">(Rits Jewellers)</p>
+              <p className="text-[11px] text-muted-foreground font-medium">(SAJIRI JEWELS)</p>
             </div>
           </div>
         </CardContent>

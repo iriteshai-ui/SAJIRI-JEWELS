@@ -117,7 +117,7 @@ router.post("/products", requireAdmin, async (req, res): Promise<void> => {
       price: String(body.price),
       compareAtPrice: String(body.compareAtPrice || 0),
       availableQuantity: body.availableQuantity ?? 0,
-      sku: body.sku || `RJ-${Date.now()}`,
+      sku: body.sku || `SJ-${Date.now()}`,
       categoryId: body.categoryId ?? null,
       category: body.category || "Jewellery",
       subcategory: body.subcategory || "",

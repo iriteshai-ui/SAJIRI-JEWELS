@@ -164,7 +164,7 @@ router.get("/importer/preview", requireAdmin, async (req, res): Promise<void> =>
       const detectedCategory = mapToInternalCategory(p.product_type, p.tags);
       const detectedMaterial = inferMaterial(p.title, p.tags);
       const colorOption = p.options?.find((o: any) => o.name?.toUpperCase() === "COLOR")?.values?.[0] || primaryVariant.title || "Gold";
-      const sku = primaryVariant.sku || `RJ-${p.id}`;
+      const sku = primaryVariant.sku || `SJ-${p.id}`;
 
       const galleryImages = (p.images || []).map((img: any) => img.src);
 
@@ -265,7 +265,7 @@ router.post("/importer/import", requireAdmin, async (req, res): Promise<void> =>
         price: String(item.retailPrice),
         compareAtPrice: String(item.compareAtPrice || item.retailPrice * 1.3),
         availableQuantity: item.stock,
-        sku: item.sku || `RJ-${Date.now()}`,
+        sku: item.sku || `SJ-${Date.now()}`,
         categoryId: catId,
         category: item.category,
         subcategory: item.subcategory || "",

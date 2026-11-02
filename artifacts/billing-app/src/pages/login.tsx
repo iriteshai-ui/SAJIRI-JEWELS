@@ -63,7 +63,7 @@ export default function Login() {
             </div>
             <div>
               <span className="font-serif font-bold text-xl tracking-wider text-amber-50">
-                RITS JEWELLERS
+                SAJIRI JEWELS
               </span>
               <p className="text-[10px] text-amber-200/60 uppercase tracking-widest">
                 Store Management
@@ -99,7 +99,7 @@ export default function Login() {
 
         {/* Footer/System Status */}
         <div className="flex items-center justify-between text-xs text-neutral-500 z-10 border-t border-neutral-800/80 pt-6">
-          <span>&copy; {new Date().getFullYear()} Rits Jewellers. All rights reserved.</span>
+          <span>&copy; {new Date().getFullYear()} SAJIRI JEWELS. All rights reserved.</span>
           <span className="flex items-center gap-1.5 font-mono text-[10px] text-emerald-400">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             Supabase Cloud Connected
@@ -188,7 +188,7 @@ export default function Login() {
               <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200/60 text-center">
                 <p className="text-[11px] text-amber-900 dark:text-amber-200 font-medium">
                   Default Store Admin: <span className="font-mono font-bold">admin</span> /{" "}
-                  <span className="font-mono font-bold">Rits@123</span>
+                  <span className="font-mono font-bold">Sajiri@123</span>
                 </p>
               </div>
             </CardContent>

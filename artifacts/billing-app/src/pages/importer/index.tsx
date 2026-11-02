@@ -497,7 +497,7 @@ export default function ImporterStudio() {
             {/* Bottom Actions */}
             <div className="flex items-center justify-between p-4 bg-white dark:bg-neutral-900 rounded-xl border border-border shadow-xs">
               <span className="text-xs text-muted-foreground font-medium">
-                {selectedIds.size} products ready to be added to Rits Jewellers inventory.
+                {selectedIds.size} products ready to be added to SAJIRI JEWELS inventory.
               </span>
               <Button
                 onClick={handleExecuteImport}
