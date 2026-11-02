@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { db, productsTable, categoriesTable } from "@workspace/db";
+import { db, productsTable, categoriesTable, inventoryTable } from "@workspace/db";
 import { eq, ilike, sql, desc, and } from "drizzle-orm";
-import { requireAuth, requireAdmin } from "../middlewares/auth";
+import { requireAuth, requireAdmin, getSessionUser } from "../middlewares/auth";
 import { z } from "zod";
 
 const router = Router();
@@ -145,6 +145,20 @@ router.post("/products", requireAdmin, async (req, res): Promise<void> => {
     })
     .returning();
 
+  const user = await getSessionUser(req);
+  if ((product.availableQuantity ?? 0) > 0) {
+    await db.insert(inventoryTable).values({
+      productId: product.id,
+      productName: product.name,
+      previousQuantity: 0,
+      quantityAdded: product.availableQuantity,
+      quantityReduced: null,
+      currentQuantity: product.availableQuantity,
+      actionType: "add",
+      updatedById: user?.id ?? null,
+    });
+  }
+
   res.status(201).json(formatProduct(product));
 });
 
@@ -178,6 +192,16 @@ router.patch("/products/:id", requireAdmin, async (req, res): Promise<void> => {
   const parsed = updateProductSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [existingProduct] = await db
+    .select()
+    .from(productsTable)
+    .where(eq(productsTable.id, id));
+
+  if (!existingProduct) {
+    res.status(404).json({ error: "Product not found" });
     return;
   }
 
@@ -220,6 +244,35 @@ router.patch("/products/:id", requireAdmin, async (req, res): Promise<void> => {
     res.status(404).json({ error: "Product not found" });
     return;
   }
+
+  // Record inventory audit transaction log
+  const user = await getSessionUser(req);
+  const prevQty = existingProduct.availableQuantity;
+  const currentQty = product.availableQuantity;
+  const qtyDiff = currentQty - prevQty;
+
+  let actionType = "update";
+  let qtyAdded: number | null = null;
+  let qtyReduced: number | null = null;
+
+  if (qtyDiff > 0) {
+    actionType = "add";
+    qtyAdded = qtyDiff;
+  } else if (qtyDiff < 0) {
+    actionType = "reduce";
+    qtyReduced = Math.abs(qtyDiff);
+  }
+
+  await db.insert(inventoryTable).values({
+    productId: product.id,
+    productName: product.name,
+    previousQuantity: prevQty,
+    quantityAdded: qtyAdded,
+    quantityReduced: qtyReduced,
+    currentQuantity: currentQty,
+    actionType: actionType,
+    updatedById: user?.id ?? null,
+  });
 
   res.json(formatProduct(product));
 });

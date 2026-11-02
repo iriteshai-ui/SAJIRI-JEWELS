@@ -5,6 +5,7 @@ import {
   useUpdateProduct,
   useDeleteProduct,
   getListProductsQueryKey,
+  getListInventoryQueryKey,
   type Product,
   type ProductInput,
   type ProductUpdate,
@@ -117,7 +118,10 @@ export default function Products() {
   };
 
   const onSubmit = (values: ProductForm) => {
-    const invalidate = () => queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
+    const invalidate = () => {
+      queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getListInventoryQueryKey() });
+    };
     if (editProduct) {
       updateProduct.mutate(
         { id: editProduct.id, data: values as ProductUpdate },

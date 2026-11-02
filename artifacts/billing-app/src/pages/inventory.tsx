@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList, CommandInput } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
-import { Plus, History, ArrowUpCircle, ArrowDownCircle, ShoppingCart, ChevronLeft, ChevronRight, Search, ChevronsUpDown, Check, X, Package, FileSpreadsheet } from "lucide-react";
+import { Plus, History, ArrowUpCircle, ArrowDownCircle, ShoppingCart, ChevronLeft, ChevronRight, Search, ChevronsUpDown, Check, X, Package, FileSpreadsheet, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DataTablePagination } from "@/components/common/data-table-pagination";
 
@@ -37,6 +37,8 @@ const actionTypeConfig = {
   add: { label: "Stock Added", color: "text-green-600", icon: ArrowUpCircle, badgeVariant: "outline" as const },
   reduce: { label: "Stock Reduced", color: "text-orange-600", icon: ArrowDownCircle, badgeVariant: "secondary" as const },
   order: { label: "Order Fulfilled", color: "text-primary", icon: ShoppingCart, badgeVariant: "default" as const },
+  update: { label: "Product Updated", color: "text-blue-600", icon: RefreshCw, badgeVariant: "outline" as const },
+  import: { label: "Supplier Import", color: "text-amber-600", icon: Package, badgeVariant: "outline" as const },
 };
 
 export default function Inventory() {
@@ -232,7 +234,7 @@ export default function Inventory() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right text-muted-foreground">{txn.previousQuantity}</td>
-                      <td className={`px-4 py-3 text-right font-medium ${change > 0 ? "text-green-600" : "text-orange-600"}`}>
+                      <td className={`px-4 py-3 text-right font-medium ${change > 0 ? "text-green-600" : change < 0 ? "text-orange-600" : "text-muted-foreground"}`}>
                         {change > 0 ? `+${change}` : change}
                       </td>
                       <td className="px-4 py-3 text-right font-bold">{txn.currentQuantity}</td>
