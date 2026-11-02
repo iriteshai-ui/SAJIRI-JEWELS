@@ -531,7 +531,7 @@ router.get("/orders/:id/invoice", requireAuth, async (req, res): Promise<void> =
     82
   );
   doc.fillColor("#D4AF37").fontSize(7.5).font("Helvetica-Bold").text(
-    "BIS HALLMARK CERTIFIED JEWELLERY • HSN: 7113",
+    "PREMIUM FASHION JEWELLERY • ANTI-TARNISH • WATERPROOF",
     50,
     95
   );
@@ -575,12 +575,12 @@ router.get("/orders/:id/invoice", requireAuth, async (req, res): Promise<void> =
   currentY = 195;
   doc.rect(35, currentY, 525, 22).fillAndStroke("#F1F5F9", "#CBD5E1");
   doc.fillColor("#1E293B").fontSize(8).font("Helvetica-Bold");
-  doc.text("ITEM DESCRIPTION", 45, currentY + 6, { width: 165, align: "left" });
-  doc.text("PURITY / HUID", 215, currentY + 6, { width: 80, align: "left" });
-  doc.text("NET WT (g)", 300, currentY + 6, { width: 55, align: "right" });
-  doc.text("QTY", 360, currentY + 6, { width: 30, align: "center" });
-  doc.text("RATE / MAKING", 395, currentY + 6, { width: 75, align: "right" });
-  doc.text("AMOUNT (₹)", 475, currentY + 6, { width: 75, align: "right" });
+  doc.text("#", 45, currentY + 6, { width: 25, align: "left" });
+  doc.text("ITEM DESCRIPTION", 70, currentY + 6, { width: 225, align: "left" });
+  doc.text("CATEGORY", 295, currentY + 6, { width: 85, align: "left" });
+  doc.text("QTY", 380, currentY + 6, { width: 35, align: "center" });
+  doc.text("UNIT PRICE (Rs.)", 415, currentY + 6, { width: 65, align: "right" });
+  doc.text("AMOUNT (Rs.)", 480, currentY + 6, { width: 70, align: "right" });
 
   currentY += 22;
 
@@ -588,27 +588,30 @@ router.get("/orders/:id/invoice", requireAuth, async (req, res): Promise<void> =
   doc.font("Helvetica").fontSize(8);
   let isAltRow = false;
 
-  for (const item of items) {
+  for (let idx = 0; idx < items.length; idx++) {
+    const item = items[idx];
     if (isAltRow) {
       doc.rect(35, currentY, 525, 24).fill("#FAFAFA");
     }
     isAltRow = !isAltRow;
 
+    doc.fillColor("#64748B");
+    doc.text(String(idx + 1), 45, currentY + 7, { width: 25, align: "left" });
+
+    doc.fillColor("#0F172A").font("Helvetica-Bold");
+    doc.text(item.productName, 70, currentY + 7, { width: 225, align: "left" });
+
+    doc.fillColor("#475569").font("Helvetica");
+    doc.text(item.category || "Jewellery", 295, currentY + 7, { width: 85, align: "left" });
+
     doc.fillColor("#0F172A");
-    doc.text(item.productName, 45, currentY + 7, { width: 165, align: "left" });
+    doc.text(String(item.quantity), 380, currentY + 7, { width: 35, align: "center" });
 
-    const purityText = `${item.purity || "22K 916"}${item.hallmarkUid ? ` • ${item.hallmarkUid}` : ""}`;
-    doc.fillColor("#475569").text(purityText, 215, currentY + 7, { width: 80, align: "left" });
+    const rateText = `Rs. ${Number(item.unitPrice).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+    doc.text(rateText, 415, currentY + 7, { width: 65, align: "right" });
 
-    const netWtText = item.netWeight ? `${Number(item.netWeight).toFixed(3)}g` : "—";
-    doc.fillColor("#0F172A").text(netWtText, 300, currentY + 7, { width: 55, align: "right" });
-    doc.text(String(item.quantity), 360, currentY + 7, { width: 30, align: "center" });
-
-    const rateText = `₹${Number(item.unitPrice).toLocaleString("en-IN")}`;
-    doc.text(rateText, 395, currentY + 7, { width: 75, align: "right" });
-
-    const totalText = `₹${Number(item.total).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
-    doc.fillColor("#0F172A").font("Helvetica-Bold").text(totalText, 475, currentY + 7, { width: 75, align: "right" });
+    const totalText = `Rs. ${Number(item.total).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+    doc.fillColor("#0F172A").font("Helvetica-Bold").text(totalText, 480, currentY + 7, { width: 70, align: "right" });
     doc.font("Helvetica");
 
     doc.moveTo(35, currentY + 24).lineTo(560, currentY + 24).strokeColor("#E2E8F0").stroke();
@@ -637,46 +640,37 @@ router.get("/orders/:id/invoice", requireAuth, async (req, res): Promise<void> =
     currentY += 16;
   };
 
-  renderTotalRow("Subtotal:", `₹${subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`);
+  renderTotalRow("Subtotal:", `Rs. ${subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`);
 
   if (gstAmount > 0) {
-    renderTotalRow(`GST (${gstPct}% on Jewellery):`, `₹${gstAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`);
+    renderTotalRow(`GST (${gstPct}%):`, `Rs. ${gstAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`);
   }
 
   if (discount > 0) {
-    renderTotalRow("Discount Applied:", `-₹${discount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, false, "#DC2626");
+    renderTotalRow("Discount Applied:", `-Rs. ${discount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, false, "#DC2626");
   }
 
   if (oldGoldAmt > 0) {
-    const ogLabel = oldGoldWt > 0 ? `Old Gold Credit (${oldGoldWt.toFixed(3)}g):` : "Old Gold Credit:";
-    renderTotalRow(ogLabel, `-₹${oldGoldAmt.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, true, "#16A34A");
+    const ogLabel = oldGoldWt > 0 ? `Exchange Credit (${oldGoldWt.toFixed(3)}g):` : "Exchange Credit:";
+    renderTotalRow(ogLabel, `-Rs. ${oldGoldAmt.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, true, "#16A34A");
   }
 
   doc.moveTo(totalsBoxX, currentY).lineTo(560, currentY).strokeColor("#CBD5E1").stroke();
   currentY += 6;
 
-  renderTotalRow("Net Payable Amount:", `₹${grandTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, true, "#D97706");
+  renderTotalRow("Net Payable Amount:", `Rs. ${grandTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, true, "#D97706");
 
   doc.moveTo(totalsBoxX, currentY).lineTo(560, currentY).strokeColor("#CBD5E1").stroke();
   currentY += 6;
 
-  renderTotalRow(`Amount Paid (${pMethod}):`, `₹${paid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, true, "#0F172A");
+  renderTotalRow(`Amount Paid (${pMethod}):`, `Rs. ${paid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, true, "#0F172A");
 
   if (pending > 0) {
-    renderTotalRow("Pending Balance:", `₹${pending.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, true, "#DC2626");
+    renderTotalRow("Pending Balance:", `Rs. ${pending.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, true, "#DC2626");
   }
 
-  // Terms & Conditions (Left side opposite totals)
-  const termsY = currentY - (oldGoldAmt > 0 ? 95 : 75);
-  doc.fillColor("#64748B").fontSize(8).font("Helvetica-Bold").text("TERMS & CONDITIONS", 35, termsY);
-  doc.fontSize(7).font("Helvetica").fillColor("#64748B");
-  doc.text("1. All Gold jewellery is 100% BIS Hallmarked (with HUID).", 35, termsY + 12);
-  doc.text("2. Net weight is verified on certified electronic balances.", 35, termsY + 22);
-  doc.text("3. Exchange / buyback calculated per prevailing market rates.", 35, termsY + 32);
-  doc.text("4. Goods can be exchanged within 7 days with this original tax invoice.", 35, termsY + 42);
-
   // Signature Block
-  const sigY = Math.max(currentY + 30, 700);
+  const sigY = Math.max(currentY + 25, 680);
   const sigX = 370;
   const sigWidth = 185;
 
@@ -685,12 +679,12 @@ router.get("/orders/:id/invoice", requireAuth, async (req, res): Promise<void> =
   doc.fillColor("#D97706").font("Helvetica").fontSize(8).text("(SAJIRI JEWELS)", sigX, sigY + 18, { width: sigWidth, align: "center" });
 
   // Footer Note
-  currentY = Math.max(sigY + 40, 770);
-  doc.moveTo(35, currentY).lineTo(560, currentY).strokeColor("#E2E8F0").stroke();
+  const footerY = Math.max(sigY + 45, 760);
+  doc.moveTo(35, footerY).lineTo(560, footerY).strokeColor("#E2E8F0").stroke();
   doc.fillColor("#64748B").fontSize(7.5).font("Helvetica").text(
-    "Thank you for choosing SAJIRI JEWELS! Where Purity Meets Perfection.",
+    "Thank you for choosing SAJIRI JEWELS! Timeless Elegance & Modern Luxury.",
     35,
-    currentY + 6,
+    footerY + 6,
     { align: "center", width: 525 }
   );
 
