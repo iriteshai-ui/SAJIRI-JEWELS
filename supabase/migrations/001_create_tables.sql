@@ -1,6 +1,5 @@
 -- ============================================================================
--- Supabase Migration: Create all tables for OptimaGodown Inventory System
--- Run order matters: tables are created in dependency order.
+-- Migration: Create all tables for Rits Jewellers Billing & Inventory System
 -- Safe to re-run: uses IF NOT EXISTS throughout.
 -- ============================================================================
 
@@ -17,18 +16,40 @@ CREATE TABLE IF NOT EXISTS "users" (
   "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 2. Products table
+-- 2. Metal Rates table (Live / Daily Gold, Silver, Platinum rates)
+CREATE TABLE IF NOT EXISTS "metal_rates" (
+  "id" SERIAL PRIMARY KEY,
+  "gold_24k" NUMERIC(10, 2) NOT NULL DEFAULT 7650.00,
+  "gold_22k" NUMERIC(10, 2) NOT NULL DEFAULT 7010.00,
+  "gold_18k" NUMERIC(10, 2) NOT NULL DEFAULT 5740.00,
+  "silver" NUMERIC(10, 2) NOT NULL DEFAULT 92.50,
+  "platinum" NUMERIC(10, 2) NOT NULL DEFAULT 3200.00,
+  "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "updated_by_id" INTEGER REFERENCES "users"("id")
+);
+
+-- 3. Products table (Jewellery Items)
 CREATE TABLE IF NOT EXISTS "products" (
   "id" SERIAL PRIMARY KEY,
   "name" TEXT NOT NULL,
   "description" TEXT NOT NULL DEFAULT '',
-  "price" NUMERIC(10, 2) NOT NULL,
+  "price" NUMERIC(12, 2) NOT NULL,
   "available_quantity" INTEGER NOT NULL DEFAULT 0,
+  "category" TEXT NOT NULL DEFAULT 'Jewellery',
+  "metal_type" TEXT NOT NULL DEFAULT 'Gold',
+  "purity" TEXT NOT NULL DEFAULT '22K 916',
+  "gross_weight" NUMERIC(10, 3) NOT NULL DEFAULT 0.000,
+  "net_weight" NUMERIC(10, 3) NOT NULL DEFAULT 0.000,
+  "stone_weight" NUMERIC(10, 3) NOT NULL DEFAULT 0.000,
+  "making_charges_type" TEXT NOT NULL DEFAULT 'per_gram',
+  "making_charges_value" NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+  "hallmark_uid" TEXT,
+  "hsn_code" TEXT NOT NULL DEFAULT '7113',
   "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 3. Orders table (references users)
+-- 4. Orders table (Jewellery Invoices)
 CREATE TABLE IF NOT EXISTS "orders" (
   "id" SERIAL PRIMARY KEY,
   "invoice_number" TEXT NOT NULL UNIQUE,
@@ -36,11 +57,16 @@ CREATE TABLE IF NOT EXISTS "orders" (
   "customer_mobile" TEXT NOT NULL,
   "customer_email" TEXT,
   "customer_address" TEXT,
+  "customer_pan" TEXT,
   "subtotal" NUMERIC(12, 2) NOT NULL,
-  "gst_percentage" NUMERIC(5, 2) NOT NULL DEFAULT 0,
+  "gst_percentage" NUMERIC(5, 2) NOT NULL DEFAULT 3.00,
   "gst_amount" NUMERIC(12, 2) NOT NULL,
   "referral_charges" NUMERIC(12, 2) NOT NULL DEFAULT 0,
   "discount" NUMERIC(12, 2) NOT NULL DEFAULT 0,
+  "old_gold_weight" NUMERIC(10, 3) NOT NULL DEFAULT 0.000,
+  "old_gold_rate" NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+  "old_gold_amount" NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+  "old_gold_notes" TEXT,
   "grand_total" NUMERIC(12, 2) NOT NULL,
   "paid_amount" NUMERIC(12, 2) NOT NULL DEFAULT 0,
   "pending_amount" NUMERIC(12, 2) NOT NULL DEFAULT 0,
@@ -50,19 +76,28 @@ CREATE TABLE IF NOT EXISTS "orders" (
   "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 4. Order items table (references orders, products)
+-- 5. Order items table (with jewellery breakdown)
 CREATE TABLE IF NOT EXISTS "order_items" (
   "id" SERIAL PRIMARY KEY,
-  "order_id" INTEGER NOT NULL REFERENCES "orders"("id"),
+  "order_id" INTEGER NOT NULL REFERENCES "orders"("id") ON DELETE CASCADE,
   "product_id" INTEGER NOT NULL REFERENCES "products"("id"),
   "product_name" TEXT NOT NULL,
-  "quantity" INTEGER NOT NULL,
-  "unit_price" NUMERIC(10, 2) NOT NULL,
+  "category" TEXT DEFAULT 'Jewellery',
+  "metal_type" TEXT DEFAULT 'Gold',
+  "purity" TEXT DEFAULT '22K 916',
+  "gross_weight" NUMERIC(10, 3) DEFAULT 0.000,
+  "net_weight" NUMERIC(10, 3) DEFAULT 0.000,
+  "metal_rate" NUMERIC(10, 2) DEFAULT 0.00,
+  "making_charges" NUMERIC(10, 2) DEFAULT 0.00,
+  "hallmark_uid" TEXT,
+  "hsn_code" TEXT DEFAULT '7113',
+  "quantity" INTEGER NOT NULL DEFAULT 1,
+  "unit_price" NUMERIC(12, 2) NOT NULL,
   "total" NUMERIC(12, 2) NOT NULL,
   "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 5. Order payments table (references orders, users)
+-- 6. Order payments table
 CREATE TABLE IF NOT EXISTS "order_payments" (
   "id" SERIAL PRIMARY KEY,
   "order_id" INTEGER NOT NULL REFERENCES "orders"("id") ON DELETE CASCADE,
@@ -73,7 +108,7 @@ CREATE TABLE IF NOT EXISTS "order_payments" (
   "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 6. Inventory transactions table (references products, users)
+-- 7. Inventory transactions table
 CREATE TABLE IF NOT EXISTS "inventory_transactions" (
   "id" SERIAL PRIMARY KEY,
   "product_id" INTEGER NOT NULL REFERENCES "products"("id"),
@@ -87,12 +122,11 @@ CREATE TABLE IF NOT EXISTS "inventory_transactions" (
   "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 7. Session table (for connect-pg-simple)
+-- 8. Session table
 CREATE TABLE IF NOT EXISTS "session" (
   "sid" VARCHAR NOT NULL PRIMARY KEY,
   "sess" JSON NOT NULL,
   "expire" TIMESTAMP(6) NOT NULL
 );
 
--- Index on session expiry for cleanup performance
 CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");

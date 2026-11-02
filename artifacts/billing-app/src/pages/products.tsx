@@ -47,8 +47,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, Edit, Trash2, Package, ChevronsUpDown, Check, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Package, ChevronsUpDown, Check, X, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
@@ -148,14 +149,21 @@ export default function Products() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Products</h1>
-          <p className="text-muted-foreground mt-1">Manage your product catalogue.</p>
+          <h1 className="font-serif text-3xl font-bold tracking-tight">Jewellery Inventory</h1>
+          <p className="text-muted-foreground text-sm mt-1">Manage private product catalogue, stock levels, and pricing.</p>
         </div>
-        <Button onClick={openCreate} data-testid="button-create-product">
-          <Plus className="w-4 h-4 mr-2" /> Add Product
-        </Button>
+        <div className="flex items-center gap-2.5">
+          <Link href="/importer">
+            <Button variant="outline" className="border-amber-300 text-amber-800 hover:bg-amber-50 gap-1.5 font-semibold">
+              <Download className="w-4 h-4" /> Import from Supplier
+            </Button>
+          </Link>
+          <Button onClick={openCreate} className="bg-amber-600 hover:bg-amber-700 text-white font-semibold" data-testid="button-create-product">
+            <Plus className="w-4 h-4 mr-1.5" /> Add Product
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -163,7 +171,7 @@ export default function Products() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
           <Input
-            placeholder="Search crystal type name or description..."
+            placeholder="Search jewellery by name, category, or SKU..."
             className="pl-9 pr-8"
             value={search}
             onChange={(e) => {
@@ -194,9 +202,9 @@ export default function Products() {
               data-testid="button-search-products-combobox"
             >
               <div className="flex items-center gap-2 truncate">
-                <Package className="w-4 h-4 shrink-0 opacity-50 text-primary" />
+                <Package className="w-4 h-4 shrink-0 opacity-50 text-amber-600" />
                 <span className={search ? "text-foreground font-medium truncate" : "truncate"}>
-                  {search || "Choose Crystal Type..."}
+                  {search || "Select Jewellery Item..."}
                 </span>
               </div>
               <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50 ml-1" />
@@ -204,10 +212,10 @@ export default function Products() {
           </PopoverTrigger>
           <PopoverContent className="w-[320px] sm:w-[380px] p-0" align="start">
             <Command>
-              <CommandInput placeholder="Auto-suggest crystal type..." />
+              <CommandInput placeholder="Auto-suggest jewellery item..." />
               <CommandList className="max-h-[260px] overflow-y-auto">
-                <CommandEmpty>No matching crystal types found.</CommandEmpty>
-                <CommandGroup heading="All Crystal Types">
+                <CommandEmpty>No matching jewellery items found.</CommandEmpty>
+                <CommandGroup heading="All Jewellery Items">
                   {search && (
                     <CommandItem
                       value="--clear-all-search-filter--"

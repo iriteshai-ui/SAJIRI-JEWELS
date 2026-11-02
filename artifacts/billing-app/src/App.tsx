@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,24 +16,44 @@ import NewOrder from "@/pages/orders/new";
 import OrderDetail from "@/pages/orders/detail";
 import Users from "@/pages/users";
 import Settings from "@/pages/settings";
+import ImporterStudio from "@/pages/importer";
+import CategoriesPage from "@/pages/categories";
+import Catalogue from "@/pages/catalogue";
+import CatalogueDetail from "@/pages/catalogue/detail";
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ component: Component, adminOnly = false }: { component: React.ComponentType, adminOnly?: boolean }) {
+function ProtectedRoute({
+  component: Component,
+  adminOnly = false,
+}: {
+  component: React.ComponentType;
+  adminOnly?: boolean;
+}) {
   const { user, isLoading, isAuthenticated, isAdmin } = useAuth();
+  const [, setLocation] = useLocation();
 
   if (isLoading) {
-    return <div className="h-screen w-full flex items-center justify-center bg-background"><Loader2 className="animate-spin text-primary w-8 h-8" /></div>;
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-background">
+        <Loader2 className="animate-spin text-amber-600 w-8 h-8" />
+      </div>
+    );
   }
 
-  if (!isAuthenticated) return null; // AuthProvider handles redirect
-  
+  if (!isAuthenticated) {
+    setLocation("/login");
+    return null;
+  }
+
   if (adminOnly && !isAdmin) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-foreground">Access Denied</h2>
-          <p className="text-muted-foreground mt-2">You do not have permission to view this page.</p>
+        <div className="text-center p-8">
+          <h2 className="text-2xl font-serif font-bold text-foreground">Access Denied</h2>
+          <p className="text-muted-foreground mt-2 text-sm">
+            You do not have administrative permissions to view this section.
+          </p>
         </div>
       </div>
     );
@@ -49,8 +69,18 @@ function ProtectedRoute({ component: Component, adminOnly = false }: { component
 function Router() {
   return (
     <Switch>
+      {/* ── Public Customer Catalogue Routes ── */}
+      <Route path="/" component={Catalogue} />
+      <Route path="/catalogue" component={Catalogue} />
+      <Route path="/catalogue/:id" component={CatalogueDetail} />
+
+      {/* ── Staff & Admin Authentication ── */}
       <Route path="/login" component={Login} />
+
+      {/* ── Protected Management Portal Routes ── */}
       <Route path="/dashboard"><ProtectedRoute component={Dashboard} /></Route>
+      <Route path="/importer"><ProtectedRoute component={ImporterStudio} adminOnly /></Route>
+      <Route path="/categories"><ProtectedRoute component={CategoriesPage} adminOnly /></Route>
       <Route path="/products"><ProtectedRoute component={Products} adminOnly /></Route>
       <Route path="/inventory"><ProtectedRoute component={Inventory} adminOnly /></Route>
       <Route path="/orders/new"><ProtectedRoute component={NewOrder} /></Route>
@@ -58,13 +88,7 @@ function Router() {
       <Route path="/orders"><ProtectedRoute component={Orders} /></Route>
       <Route path="/users"><ProtectedRoute component={Users} adminOnly /></Route>
       <Route path="/settings"><ProtectedRoute component={Settings} /></Route>
-      <Route path="/">
-        <ProtectedRoute component={() => {
-          // Just redirect to dashboard if hitting root
-          window.location.href = "/dashboard";
-          return null;
-        }} />
-      </Route>
+
       <Route component={NotFound} />
     </Switch>
   );

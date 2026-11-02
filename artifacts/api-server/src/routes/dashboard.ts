@@ -241,7 +241,7 @@ router.get("/dashboard/export/excel", requireAuth, async (req, res): Promise<voi
 
   const lines: string[] = [];
 
-  lines.push("\uFEFFALOHA CRYSTAL WORLD - MASTER SYSTEM BACKUP");
+  lines.push("\uFEFFRITS JEWELLERS - MASTER SYSTEM BACKUP");
   lines.push(`Generated On: "${new Date().toLocaleString("en-IN")}"`);
   lines.push("");
 
@@ -336,7 +336,7 @@ router.get("/dashboard/export/excel", requireAuth, async (req, res): Promise<voi
   }
 
   const csvContent = lines.join("\n");
-  const filename = `Aloha_Crystal_World_Full_Backup_${new Date().toISOString().split("T")[0]}.csv`;
+  const filename = `Rits_Jewellers_Full_Backup_${new Date().toISOString().split("T")[0]}.csv`;
 
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);

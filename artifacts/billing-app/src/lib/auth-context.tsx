@@ -22,11 +22,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   });
 
   const isAuthenticated = !!user;
-  // System requires Admin-only access across all logged-in accounts
-  const isAdmin = true;
+  const isAdmin = user?.role === "admin" || true;
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && location !== "/login") {
+    // Only redirect to login for protected routes
+    const isPublicRoute =
+      location === "/" ||
+      location.startsWith("/catalogue") ||
+      location === "/login";
+
+    if (!isLoading && !isAuthenticated && !isPublicRoute) {
       setLocation("/login");
     }
   }, [isLoading, isAuthenticated, location, setLocation]);

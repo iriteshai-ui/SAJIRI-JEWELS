@@ -9,18 +9,32 @@ const execPath = process.env.npm_execpath;
 
 let status;
 if (execPath && execPath.includes("pnpm")) {
-  status = spawnSync(process.execPath, [execPath, ...args], {
-    stdio: "inherit",
-    env: process.env,
-  }).status;
+  if (execPath.endsWith(".js") || execPath.endsWith(".cjs") || execPath.endsWith(".mjs")) {
+    status = spawnSync(process.execPath, [execPath, ...args], {
+      stdio: "inherit",
+      env: process.env,
+    }).status;
+  } else {
+    // Binary executable (e.g. on macOS / Linux standalone pnpm binary)
+    status = spawnSync(execPath, args, {
+      stdio: "inherit",
+      env: process.env,
+    }).status;
+  }
 } else {
-  // Hostinger does not have pnpm globally installed on the PATH by default.
-  // Use npx to securely locate the locally installed pnpm binary or fetch it.
-  status = spawnSync("npx", ["--yes", "pnpm", ...args], {
+  // Use pnpm from PATH if available, or fallback to npx
+  status = spawnSync("pnpm", args, {
     stdio: "inherit",
     env: process.env,
     shell: process.platform === "win32",
   }).status;
+  if (status !== 0) {
+    status = spawnSync("npx", ["--yes", "pnpm", ...args], {
+      stdio: "inherit",
+      env: process.env,
+      shell: process.platform === "win32",
+    }).status;
+  }
 }
 
 process.exit(status ?? 1);

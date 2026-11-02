@@ -3,7 +3,6 @@ import { db, ordersTable, orderItemsTable, productsTable, inventoryTable, usersT
 import { eq, ilike, gte, lte, and, sql, or, desc } from "drizzle-orm";
 import { requireAuth, getSessionUser } from "../middlewares/auth";
 import {
-  CreateOrderBody,
   GetOrderParams,
   ListOrdersQueryParams,
   DownloadInvoiceParams,
@@ -18,7 +17,7 @@ async function generateInvoiceNumber(): Promise<string> {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   const yyyymmdd = `${year}${month}${day}`;
-  const prefix = `INV-${yyyymmdd}-`;
+  const prefix = `RJ-INV-${yyyymmdd}-`;
 
   const existingOrders = await db
     .select({ invoiceNumber: ordersTable.invoiceNumber })
@@ -44,8 +43,11 @@ function numericFields(o: Record<string, unknown>) {
     subtotal: Number(o.subtotal),
     gstPercentage: Number(o.gstPercentage),
     gstAmount: Number(o.gstAmount),
-    referralCharges: Number(o.referralCharges),
-    discount: Number(o.discount),
+    referralCharges: Number(o.referralCharges || 0),
+    discount: Number(o.discount || 0),
+    oldGoldWeight: Number(o.oldGoldWeight || 0),
+    oldGoldRate: Number(o.oldGoldRate || 0),
+    oldGoldAmount: Number(o.oldGoldAmount || 0),
     grandTotal: Number(o.grandTotal),
     paidAmount: Number(o.paidAmount),
     pendingAmount: Number(o.pendingAmount),
@@ -95,14 +97,20 @@ router.get("/orders", requireAuth, async (req, res): Promise<void> => {
       customerMobile: ordersTable.customerMobile,
       customerEmail: ordersTable.customerEmail,
       customerAddress: ordersTable.customerAddress,
+      customerPan: ordersTable.customerPan,
       subtotal: ordersTable.subtotal,
       gstPercentage: ordersTable.gstPercentage,
       gstAmount: ordersTable.gstAmount,
       referralCharges: ordersTable.referralCharges,
       discount: ordersTable.discount,
+      oldGoldWeight: ordersTable.oldGoldWeight,
+      oldGoldRate: ordersTable.oldGoldRate,
+      oldGoldAmount: ordersTable.oldGoldAmount,
+      oldGoldNotes: ordersTable.oldGoldNotes,
       grandTotal: ordersTable.grandTotal,
       paidAmount: ordersTable.paidAmount,
       pendingAmount: ordersTable.pendingAmount,
+      paymentMethod: ordersTable.paymentMethod,
       status: ordersTable.status,
       createdById: ordersTable.createdById,
       createdByName: usersTable.name,
@@ -127,26 +135,49 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
   const user = await getSessionUser(req);
   if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
 
-  const parsed = CreateOrderBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+  const body = req.body;
+  const customerName = String(body.customerName || "").trim();
+  const customerMobile = String(body.customerMobile || "").trim();
+  const customerEmail = body.customerEmail ? String(body.customerEmail).trim() : null;
+  const customerAddress = body.customerAddress ? String(body.customerAddress).trim() : null;
+  const customerPan = body.customerPan ? String(body.customerPan).trim().toUpperCase() : null;
+  const items = Array.isArray(body.items) ? body.items : [];
+
+  if (!customerName) {
+    res.status(400).json({ error: "Customer name is required" });
     return;
   }
 
-  const {
-    customerName, customerMobile, customerEmail, customerAddress,
-    items, gstPercentage, referralCharges, discount, paidAmount,
-  } = parsed.data;
-
   const mobileRegex = /^[6789]\d{9}$/;
-  if (!mobileRegex.test(customerMobile.trim())) {
+  if (!mobileRegex.test(customerMobile)) {
     res.status(400).json({ error: "Mobile number must be a 10-digit number starting with 6, 7, 8, or 9" });
+    return;
+  }
+
+  if (!items.length) {
+    res.status(400).json({ error: "Order must contain at least one item" });
     return;
   }
 
   // Validate stock and compute subtotal
   let subtotal = 0;
-  const enrichedItems: Array<{ productId: number; productName: string; quantity: number; unitPrice: number; total: number; prevQty: number }> = [];
+  const enrichedItems: Array<{
+    productId: number;
+    productName: string;
+    category: string;
+    metalType: string;
+    purity: string;
+    grossWeight: string;
+    netWeight: string;
+    metalRate: string;
+    makingCharges: string;
+    hallmarkUid: string | null;
+    hsnCode: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+    prevQty: number;
+  }> = [];
 
   for (const item of items) {
     const [product] = await db.select().from(productsTable).where(eq(productsTable.id, item.productId));
@@ -154,52 +185,77 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
       res.status(400).json({ error: `Product ${item.productId} not found` });
       return;
     }
-    if (product.availableQuantity < item.quantity) {
+    const qty = Number(item.quantity) || 1;
+    if (product.availableQuantity < qty) {
       res.status(400).json({ error: `Insufficient stock for ${product.name}. Available: ${product.availableQuantity}` });
       return;
     }
-    const lineTotal = item.unitPrice * item.quantity;
+    const unitPrice = Number(item.unitPrice) || Number(product.price);
+    const lineTotal = unitPrice * qty;
     subtotal += lineTotal;
+
     enrichedItems.push({
       productId: item.productId,
       productName: product.name,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
+      category: item.category || product.category || "Jewellery",
+      metalType: item.metalType || product.metalType || "Gold",
+      purity: item.purity || product.purity || "22K 916",
+      grossWeight: String(item.grossWeight || product.grossWeight || 0),
+      netWeight: String(item.netWeight || product.netWeight || 0),
+      metalRate: String(item.metalRate || 0),
+      makingCharges: String(item.makingCharges || product.makingChargesValue || 0),
+      hallmarkUid: item.hallmarkUid || product.hallmarkUid || null,
+      hsnCode: item.hsnCode || product.hsnCode || "7113",
+      quantity: qty,
+      unitPrice,
       total: lineTotal,
       prevQty: product.availableQuantity,
     });
   }
 
-  const gstPct = gstPercentage ?? 0;
+  const gstPct = Number(body.gstPercentage ?? 3); // 3% default for jewelry
   const gstAmount = subtotal * (gstPct / 100);
-  const refCharges = referralCharges ?? 0;
-  const disc = discount ?? 0;
-  const grandTotal = subtotal + gstAmount + refCharges - disc;
+  const refCharges = Number(body.referralCharges ?? 0);
+  const disc = Number(body.discount ?? 0);
+
+  // Old Gold Exchange Deduction
+  const oldGoldWeight = Number(body.oldGoldWeight ?? 0);
+  const oldGoldRate = Number(body.oldGoldRate ?? 0);
+  const oldGoldAmount = Number(body.oldGoldAmount ?? 0);
+  const oldGoldNotes = body.oldGoldNotes ? String(body.oldGoldNotes) : null;
+
+  // Grand total = Subtotal + GST + Other - Discount - Old Gold Trade-In
+  const grandTotal = Math.max(0, subtotal + gstAmount + refCharges - disc - oldGoldAmount);
   const invoiceNumber = await generateInvoiceNumber();
 
-  const paid = paidAmount !== undefined ? paidAmount : grandTotal;
+  const paid = body.paidAmount !== undefined ? Number(body.paidAmount) : grandTotal;
   const pending = Math.max(0, grandTotal - paid);
   const status = pending > 0 ? "pending" : "completed";
 
-  const customCreatedAt = req.body.createdAt && !isNaN(new Date(req.body.createdAt as string).getTime())
-    ? new Date(req.body.createdAt as string)
+  const customCreatedAt = body.createdAt && !isNaN(new Date(body.createdAt as string).getTime())
+    ? new Date(body.createdAt as string)
     : undefined;
 
   const [order] = await db.insert(ordersTable).values({
     invoiceNumber,
     customerName,
     customerMobile,
-    customerEmail: customerEmail ?? null,
-    customerAddress: customerAddress ?? null,
+    customerEmail,
+    customerAddress,
+    customerPan,
     subtotal: String(subtotal),
     gstPercentage: String(gstPct),
     gstAmount: String(gstAmount),
     referralCharges: String(refCharges),
     discount: String(disc),
+    oldGoldWeight: String(oldGoldWeight),
+    oldGoldRate: String(oldGoldRate),
+    oldGoldAmount: String(oldGoldAmount),
+    oldGoldNotes,
     grandTotal: String(grandTotal),
     paidAmount: String(paid),
     pendingAmount: String(pending),
-    paymentMethod: (req.body.paymentMethod as string) || "Cash",
+    paymentMethod: (body.paymentMethod as string) || "Cash",
     status,
     createdById: user.id,
     createdAt: customCreatedAt,
@@ -211,6 +267,15 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
       orderId: order.id,
       productId: item.productId,
       productName: item.productName,
+      category: item.category,
+      metalType: item.metalType,
+      purity: item.purity,
+      grossWeight: item.grossWeight,
+      netWeight: item.netWeight,
+      metalRate: item.metalRate,
+      makingCharges: item.makingCharges,
+      hallmarkUid: item.hallmarkUid,
+      hsnCode: item.hsnCode,
       quantity: item.quantity,
       unitPrice: String(item.unitPrice),
       total: String(item.total),
@@ -234,7 +299,7 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     await db.insert(orderPaymentsTable).values({
       orderId: order.id,
       amount: String(paid),
-      paymentMethod: (req.body.paymentMethod as string) || "Cash",
+      paymentMethod: (body.paymentMethod as string) || "Cash",
       remarks: "Initial payment on order creation",
       createdById: user.id,
     });
@@ -261,14 +326,20 @@ router.get("/orders/:id", requireAuth, async (req, res): Promise<void> => {
       customerMobile: ordersTable.customerMobile,
       customerEmail: ordersTable.customerEmail,
       customerAddress: ordersTable.customerAddress,
+      customerPan: ordersTable.customerPan,
       subtotal: ordersTable.subtotal,
       gstPercentage: ordersTable.gstPercentage,
       gstAmount: ordersTable.gstAmount,
       referralCharges: ordersTable.referralCharges,
       discount: ordersTable.discount,
+      oldGoldWeight: ordersTable.oldGoldWeight,
+      oldGoldRate: ordersTable.oldGoldRate,
+      oldGoldAmount: ordersTable.oldGoldAmount,
+      oldGoldNotes: ordersTable.oldGoldNotes,
       grandTotal: ordersTable.grandTotal,
       paidAmount: ordersTable.paidAmount,
       pendingAmount: ordersTable.pendingAmount,
+      paymentMethod: ordersTable.paymentMethod,
       status: ordersTable.status,
       createdById: ordersTable.createdById,
       createdByName: usersTable.name,
@@ -312,6 +383,15 @@ router.get("/orders/:id", requireAuth, async (req, res): Promise<void> => {
       id: i.id,
       productId: i.productId,
       productName: i.productName,
+      category: i.category,
+      metalType: i.metalType,
+      purity: i.purity,
+      grossWeight: Number(i.grossWeight || 0),
+      netWeight: Number(i.netWeight || 0),
+      metalRate: Number(i.metalRate || 0),
+      makingCharges: Number(i.makingCharges || 0),
+      hallmarkUid: i.hallmarkUid,
+      hsnCode: i.hsnCode,
       quantity: i.quantity,
       unitPrice: Number(i.unitPrice),
       total: Number(i.total),
@@ -347,7 +427,6 @@ router.post("/orders/:id/payments", requireAuth, async (req, res): Promise<void>
     return;
   }
 
-  // Record payment history entry
   await db.insert(orderPaymentsTable).values({
     orderId,
     amount: String(paymentAmt),
@@ -356,7 +435,6 @@ router.post("/orders/:id/payments", requireAuth, async (req, res): Promise<void>
     createdById: user.id,
   });
 
-  // Calculate updated order balance & status
   const currentPaid = Number(order.paidAmount ?? 0);
   const newPaid = currentPaid + paymentAmt;
   const grandTotal = Number(order.grandTotal);
@@ -373,7 +451,6 @@ router.post("/orders/:id/payments", requireAuth, async (req, res): Promise<void>
     })
     .where(eq(ordersTable.id, orderId));
 
-  // Fetch updated order detail
   const [updatedOrder] = await db.select().from(ordersTable).where(eq(ordersTable.id, orderId));
   const items = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, orderId));
   const payments = await db
@@ -410,6 +487,7 @@ router.post("/orders/:id/payments", requireAuth, async (req, res): Promise<void>
   });
 });
 
+// Printable Luxury Jewelry Tax Invoice PDF
 router.get("/orders/:id/invoice", requireAuth, async (req, res): Promise<void> => {
   const user = await getSessionUser(req);
   if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
@@ -427,139 +505,191 @@ router.get("/orders/:id/invoice", requireAuth, async (req, res): Promise<void> =
 
   const items = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, order.id));
 
-  // Dynamic import for pdfkit (externalized from esbuild to avoid CJS bundling issues)
   const pdfkitModule = await import("pdfkit");
   const PDFDocument = (pdfkitModule.default ?? pdfkitModule) as typeof pdfkitModule.default;
-  const doc = new PDFDocument({ margin: 40, size: "A4" });
+  const doc = new PDFDocument({ margin: 35, size: "A4" });
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `inline; filename="${order.invoiceNumber}.pdf"`);
   doc.pipe(res);
 
-  // Top Header Banner (Light Yellow Background)
-  doc.rect(40, 40, 515, 75).fill("#fef9c3");
+  // Luxury Gold Header Banner
+  doc.rect(35, 35, 525, 82).fill("#1A1A1A");
 
-  // Top Center Title inside Yellow Banner
-  doc.fillColor("#000000").fontSize(14).font("Helvetica-Bold").text("INVOICE", 40, 46, { width: 515, align: "center" });
+  // Gold accent bar on top
+  doc.rect(35, 35, 525, 4).fill("#D4AF37");
 
-  // Shop Name & Address (Left side of yellow banner)
-  doc.fillColor("#000000").fontSize(12).font("Helvetica-Bold").text("Aloha Crystal World, Amravati", 55, 68);
-  doc.fontSize(8).font("Helvetica").fillColor("#000000").text("Vedanta Heights, Shri Colony, Dastur Nagar, Amravati. | Mob: 8369495476", 55, 88);
+  // Shop Name & Details
+  doc.fillColor("#D4AF37").fontSize(18).font("Helvetica-Bold").text("RITS JEWELLERS", 50, 48);
+  doc.fillColor("#E2E8F0").fontSize(8).font("Helvetica").text("Timeless Elegance & Pure Craftsmanship", 50, 70);
+  doc.fillColor("#94A3B8").fontSize(7.5).font("Helvetica").text(
+    "Gold Souk Market, Main Road, Amravati - 444601 | Mob: +91 98765 43210 | GSTIN: 27AABCR1234F1Z8",
+    50,
+    82
+  );
+  doc.fillColor("#D4AF37").fontSize(7.5).font("Helvetica-Bold").text(
+    "BIS HALLMARK CERTIFIED JEWELLERY • HSN: 7113",
+    50,
+    95
+  );
 
-  // Invoice Number & Date (Right side of yellow banner)
+  // Invoice Number & Date (Right side)
   const createdDateStr = new Date(order.createdAt).toLocaleDateString("en-IN", {
     day: "2-digit", month: "short", year: "numeric"
   });
-  doc.fillColor("#000000").fontSize(11).font("Helvetica-Bold").text(order.invoiceNumber, 360, 68, { width: 180, align: "right" });
-  doc.fontSize(8).font("Helvetica").fillColor("#000000").text(`Date: ${createdDateStr}`, 360, 88, { width: 180, align: "right" });
-
-  // Customer Details Box ("Mr. / Mrs.")
-  let currentY = 125;
-  doc.rect(40, currentY, 515, 75).fillAndStroke("#ffffff", "#e2e8f0");
-  
-  doc.fillColor("#666666").fontSize(8).font("Helvetica-Bold").text("Mr. / Mrs.", 55, currentY + 10);
-  doc.fillColor("#333333").fontSize(12).font("Helvetica-Bold").text(order.customerName, 55, currentY + 24);
-  
-  doc.fillColor("#444444").fontSize(9).font("Helvetica");
-  let custDetails = `Mobile: ${order.customerMobile}`;
-  if (order.customerEmail) custDetails += `  |  Email: ${order.customerEmail}`;
-  doc.text(custDetails, 55, currentY + 42);
-  if (order.customerAddress) {
-    doc.text(`Address: ${order.customerAddress}`, 55, currentY + 56, { width: 485 });
+  doc.fillColor("#D4AF37").fontSize(11).font("Helvetica-Bold").text("TAX INVOICE", 370, 48, { width: 175, align: "right" });
+  doc.fillColor("#FFFFFF").fontSize(10).font("Helvetica-Bold").text(order.invoiceNumber, 370, 64, { width: 175, align: "right" });
+  doc.fillColor("#94A3B8").fontSize(8).font("Helvetica").text(`Date: ${createdDateStr}`, 370, 80, { width: 175, align: "right" });
+  if (order.status) {
+    const isPaid = order.status === "completed" || Number(order.pendingAmount) <= 0;
+    doc.fillColor(isPaid ? "#22C55E" : "#F59E0B").fontSize(8).font("Helvetica-Bold").text(
+      isPaid ? "STATUS: PAID" : "STATUS: BALANCE DUE",
+      370,
+      95,
+      { width: 175, align: "right" }
+    );
   }
 
-  // Items Table Header (Ink-Saving: Light grey fill with clean border)
-  currentY = 208;
-  doc.rect(40, currentY, 515, 24).fillAndStroke("#f8fafc", "#cbd5e1");
-  doc.fillColor("#333333").fontSize(9).font("Helvetica-Bold");
-  doc.text("CRYSTAL TYPE", 50, currentY + 7, { width: 230, align: "left" });
-  doc.text("QTY", 280, currentY + 7, { width: 50, align: "center" });
-  doc.text("UNIT PRICE", 340, currentY + 7, { width: 90, align: "right" });
-  doc.text("TOTAL", 440, currentY + 7, { width: 100, align: "right" });
+  // Customer Details Box
+  let currentY = 125;
+  doc.rect(35, currentY, 525, 62).fillAndStroke("#FFFFFF", "#E2E8F0");
+  doc.rect(35, currentY, 4, 62).fill("#D4AF37"); // Gold left accent stripe
 
-  currentY += 24;
+  doc.fillColor("#64748B").fontSize(8).font("Helvetica-Bold").text("BILLED TO / CUSTOMER DETAILS", 48, currentY + 8);
+  doc.fillColor("#0F172A").fontSize(11).font("Helvetica-Bold").text(order.customerName, 48, currentY + 20);
 
-  // Table Rows (20% grey font)
-  doc.font("Helvetica").fontSize(9);
+  doc.fillColor("#475569").fontSize(8.5).font("Helvetica");
+  let custDetails = `Mobile: ${order.customerMobile}`;
+  if (order.customerEmail) custDetails += `   |   Email: ${order.customerEmail}`;
+  if (order.customerPan) custDetails += `   |   PAN: ${order.customerPan}`;
+  doc.text(custDetails, 48, currentY + 34);
+
+  if (order.customerAddress) {
+    doc.text(`Address: ${order.customerAddress}`, 48, currentY + 46, { width: 495 });
+  }
+
+  // Items Table Header
+  currentY = 195;
+  doc.rect(35, currentY, 525, 22).fillAndStroke("#F1F5F9", "#CBD5E1");
+  doc.fillColor("#1E293B").fontSize(8).font("Helvetica-Bold");
+  doc.text("ITEM DESCRIPTION", 45, currentY + 6, { width: 165, align: "left" });
+  doc.text("PURITY / HUID", 215, currentY + 6, { width: 80, align: "left" });
+  doc.text("NET WT (g)", 300, currentY + 6, { width: 55, align: "right" });
+  doc.text("QTY", 360, currentY + 6, { width: 30, align: "center" });
+  doc.text("RATE / MAKING", 395, currentY + 6, { width: 75, align: "right" });
+  doc.text("AMOUNT (₹)", 475, currentY + 6, { width: 75, align: "right" });
+
+  currentY += 22;
+
+  // Items Table Rows
+  doc.font("Helvetica").fontSize(8);
   let isAltRow = false;
 
   for (const item of items) {
     if (isAltRow) {
-      doc.rect(40, currentY, 515, 24).fill("#fafafa");
+      doc.rect(35, currentY, 525, 24).fill("#FAFAFA");
     }
     isAltRow = !isAltRow;
 
-    doc.fillColor("#333333");
-    doc.text(item.productName, 50, currentY + 7, { width: 230, align: "left" });
-    doc.text(String(item.quantity), 280, currentY + 7, { width: 50, align: "center" });
-    doc.text(`Rs. ${Number(item.unitPrice).toFixed(2)}`, 340, currentY + 7, { width: 90, align: "right" });
-    doc.text(`Rs. ${Number(item.total).toFixed(2)}`, 440, currentY + 7, { width: 100, align: "right" });
+    doc.fillColor("#0F172A");
+    doc.text(item.productName, 45, currentY + 7, { width: 165, align: "left" });
 
-    doc.moveTo(40, currentY + 24).lineTo(555, currentY + 24).strokeColor("#e2e8f0").stroke();
+    const purityText = `${item.purity || "22K 916"}${item.hallmarkUid ? ` • ${item.hallmarkUid}` : ""}`;
+    doc.fillColor("#475569").text(purityText, 215, currentY + 7, { width: 80, align: "left" });
+
+    const netWtText = item.netWeight ? `${Number(item.netWeight).toFixed(3)}g` : "—";
+    doc.fillColor("#0F172A").text(netWtText, 300, currentY + 7, { width: 55, align: "right" });
+    doc.text(String(item.quantity), 360, currentY + 7, { width: 30, align: "center" });
+
+    const rateText = `₹${Number(item.unitPrice).toLocaleString("en-IN")}`;
+    doc.text(rateText, 395, currentY + 7, { width: 75, align: "right" });
+
+    const totalText = `₹${Number(item.total).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`;
+    doc.fillColor("#0F172A").font("Helvetica-Bold").text(totalText, 475, currentY + 7, { width: 75, align: "right" });
+    doc.font("Helvetica");
+
+    doc.moveTo(35, currentY + 24).lineTo(560, currentY + 24).strokeColor("#E2E8F0").stroke();
     currentY += 24;
   }
 
-  currentY += 15;
+  currentY += 12;
 
-  // Totals Box (Right Aligned)
-  const totalsBoxX = 320;
-
+  // Calculation Breakdown Box (Right Aligned)
+  const totalsBoxX = 310;
   const subtotal = Number(order.subtotal);
   const gstAmount = Number(order.gstAmount);
   const gstPct = Number(order.gstPercentage);
-  const refCharges = Number(order.referralCharges);
-  const discount = Number(order.discount);
+  const discount = Number(order.discount || 0);
+  const oldGoldAmt = Number(order.oldGoldAmount || 0);
+  const oldGoldWt = Number(order.oldGoldWeight || 0);
   const grandTotal = Number(order.grandTotal);
   const paid = Number(order.paidAmount ?? 0);
   const pending = Number(order.pendingAmount ?? 0);
   const pMethod = order.paymentMethod || "Cash";
 
-  const renderTotalRow = (label: string, value: string, isBold = false, color = "#333333") => {
-    doc.fillColor(color).font(isBold ? "Helvetica-Bold" : "Helvetica").fontSize(isBold ? 10 : 9);
-    doc.text(label, totalsBoxX, currentY, { width: 130, align: "left" });
-    doc.text(value, totalsBoxX + 130, currentY, { width: 105, align: "right" });
-    currentY += 18;
+  const renderTotalRow = (label: string, value: string, isBold = false, color = "#0F172A") => {
+    doc.fillColor(color).font(isBold ? "Helvetica-Bold" : "Helvetica").fontSize(isBold ? 9.5 : 8.5);
+    doc.text(label, totalsBoxX, currentY, { width: 140, align: "left" });
+    doc.text(value, totalsBoxX + 140, currentY, { width: 105, align: "right" });
+    currentY += 16;
   };
 
-  renderTotalRow("Subtotal:", `Rs. ${subtotal.toFixed(2)}`);
+  renderTotalRow("Subtotal:", `₹${subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`);
 
   if (gstAmount > 0) {
-    renderTotalRow(`GST (${gstPct}%):`, `Rs. ${gstAmount.toFixed(2)}`);
+    renderTotalRow(`GST (${gstPct}% on Jewellery):`, `₹${gstAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`);
   }
-  if (refCharges > 0) {
-    renderTotalRow("Referral Charges:", `Rs. ${refCharges.toFixed(2)}`);
-  }
+
   if (discount > 0) {
-    renderTotalRow("Discount:", `-Rs. ${discount.toFixed(2)}`, false, "#333333");
+    renderTotalRow("Discount Applied:", `-₹${discount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, false, "#DC2626");
   }
 
-  doc.moveTo(totalsBoxX, currentY).lineTo(555, currentY).strokeColor("#cbd5e1").stroke();
+  if (oldGoldAmt > 0) {
+    const ogLabel = oldGoldWt > 0 ? `Old Gold Credit (${oldGoldWt.toFixed(3)}g):` : "Old Gold Credit:";
+    renderTotalRow(ogLabel, `-₹${oldGoldAmt.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, true, "#16A34A");
+  }
+
+  doc.moveTo(totalsBoxX, currentY).lineTo(560, currentY).strokeColor("#CBD5E1").stroke();
   currentY += 6;
 
-  renderTotalRow("Grand Total:", `Rs. ${grandTotal.toFixed(2)}`, true, "#222222");
+  renderTotalRow("Net Payable Amount:", `₹${grandTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, true, "#D97706");
 
-  doc.moveTo(totalsBoxX, currentY).lineTo(555, currentY).strokeColor("#cbd5e1").stroke();
+  doc.moveTo(totalsBoxX, currentY).lineTo(560, currentY).strokeColor("#CBD5E1").stroke();
   currentY += 6;
 
-  renderTotalRow(`Amount Paid (${pMethod}):`, `Rs. ${paid.toFixed(2)}`, true, "#333333");
+  renderTotalRow(`Amount Paid (${pMethod}):`, `₹${paid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, true, "#0F172A");
 
   if (pending > 0) {
-    renderTotalRow("Pending Balance:", `Rs. ${pending.toFixed(2)}`, true, "#333333");
+    renderTotalRow("Pending Balance:", `₹${pending.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, true, "#DC2626");
   }
 
-  // Signature Block (Right aligned, above footer)
-  const sigY = Math.max(currentY + 40, 680);
+  // Terms & Conditions (Left side opposite totals)
+  const termsY = currentY - (oldGoldAmt > 0 ? 95 : 75);
+  doc.fillColor("#64748B").fontSize(8).font("Helvetica-Bold").text("TERMS & CONDITIONS", 35, termsY);
+  doc.fontSize(7).font("Helvetica").fillColor("#64748B");
+  doc.text("1. All Gold jewellery is 100% BIS Hallmarked (with HUID).", 35, termsY + 12);
+  doc.text("2. Net weight is verified on certified electronic balances.", 35, termsY + 22);
+  doc.text("3. Exchange / buyback calculated per prevailing market rates.", 35, termsY + 32);
+  doc.text("4. Goods can be exchanged within 7 days with this original tax invoice.", 35, termsY + 42);
+
+  // Signature Block
+  const sigY = Math.max(currentY + 30, 700);
   const sigX = 370;
   const sigWidth = 185;
 
-  doc.moveTo(sigX, sigY).lineTo(sigX + sigWidth, sigY).strokeColor("#94a3b8").stroke();
-  doc.fillColor("#444444").font("Helvetica-Bold").fontSize(9).text("Authorized Signature", sigX, sigY + 6, { width: sigWidth, align: "center" });
-  doc.fillColor("#666666").font("Helvetica").fontSize(8).text("(Aloha Crystal World, Amravati)", sigX, sigY + 18, { width: sigWidth, align: "center" });
+  doc.moveTo(sigX, sigY).lineTo(sigX + sigWidth, sigY).strokeColor("#94A3B8").stroke();
+  doc.fillColor("#0F172A").font("Helvetica-Bold").fontSize(9).text("Authorized Signatory", sigX, sigY + 6, { width: sigWidth, align: "center" });
+  doc.fillColor("#D97706").font("Helvetica").fontSize(8).text("(RITS JEWELLERS)", sigX, sigY + 18, { width: sigWidth, align: "center" });
 
   // Footer Note
-  currentY = Math.max(sigY + 45, 760);
-  doc.moveTo(40, currentY).lineTo(555, currentY).strokeColor("#e2e8f0").stroke();
-  doc.fillColor("#666666").fontSize(8).font("Helvetica").text("Thank you for your business! For any queries, please contact customer support.", 40, currentY + 8, { align: "center" });
+  currentY = Math.max(sigY + 40, 770);
+  doc.moveTo(35, currentY).lineTo(560, currentY).strokeColor("#E2E8F0").stroke();
+  doc.fillColor("#64748B").fontSize(7.5).font("Helvetica").text(
+    "Thank you for choosing Rits Jewellers! Where Purity Meets Perfection.",
+    35,
+    currentY + 6,
+    { align: "center", width: 525 }
+  );
 
   doc.end();
 });

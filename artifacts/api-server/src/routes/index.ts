@@ -6,6 +6,10 @@ import productsRouter from "./products";
 import inventoryRouter from "./inventory";
 import ordersRouter from "./orders";
 import usersRouter from "./users";
+import metalRatesRouter from "./metalRates";
+import categoriesRouter from "./categories";
+import importerRouter from "./importer";
+import catalogueRouter from "./catalogue";
 
 const router: IRouter = Router();
 
@@ -16,5 +20,9 @@ router.use(productsRouter);
 router.use(inventoryRouter);
 router.use(ordersRouter);
 router.use(usersRouter);
+router.use(metalRatesRouter);
+router.use(categoriesRouter);
+router.use(importerRouter);
+router.use(catalogueRouter);
 
 export default router;
