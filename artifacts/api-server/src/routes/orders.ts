@@ -148,9 +148,12 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
     return;
   }
 
-  const mobileRegex = /^[6789]\d{9}$/;
-  if (!mobileRegex.test(customerMobile)) {
-    res.status(400).json({ error: "Mobile number must be a 10-digit number starting with 6, 7, 8, or 9" });
+  let cleanMobile = customerMobile.replace(/[\s\-\(\)\+]/g, "");
+  if (cleanMobile.startsWith("91") && cleanMobile.length === 12) cleanMobile = cleanMobile.slice(2);
+  else if (cleanMobile.startsWith("0") && cleanMobile.length === 11) cleanMobile = cleanMobile.slice(1);
+
+  if (!/^\d{10}$/.test(cleanMobile)) {
+    res.status(400).json({ error: "Mobile number must be a valid 10-digit number" });
     return;
   }
 
@@ -239,7 +242,7 @@ router.post("/orders", requireAuth, async (req, res): Promise<void> => {
   const [order] = await db.insert(ordersTable).values({
     invoiceNumber,
     customerName,
-    customerMobile,
+    customerMobile: cleanMobile,
     customerEmail,
     customerAddress,
     customerPan,
