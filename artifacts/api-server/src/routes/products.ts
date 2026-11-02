@@ -67,7 +67,7 @@ router.get("/products", requireAuth, async (req, res): Promise<void> => {
   const search = query.success ? query.data.search : undefined;
   const category = query.success ? query.data.category : undefined;
   const page = query.success ? query.data.page : 1;
-  const limit = query.success ? query.data.limit : 50;
+  const limit = Math.min(query.success ? (query.data.limit || 100) : 100, 500);
   const offset = (page - 1) * limit;
 
   const conditions = [];
@@ -98,6 +98,7 @@ router.get("/products", requireAuth, async (req, res): Promise<void> => {
     total: totalRow.count,
     page,
     limit,
+    totalPages: Math.ceil(totalRow.count / limit),
   });
 });
 

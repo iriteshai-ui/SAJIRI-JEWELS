@@ -9,7 +9,7 @@ router.get("/inventory", requireAuth, async (req, res): Promise<void> => {
   const productId = req.query.productId ? Number(req.query.productId) : undefined;
   const search = typeof req.query.search === "string" && req.query.search.trim() ? req.query.search.trim() : undefined;
   const page = req.query.page ? Number(req.query.page) : 1;
-  const limit = req.query.limit ? Number(req.query.limit) : 20;
+  const limit = req.query.limit ? Math.min(Number(req.query.limit), 500) : 100;
   const offset = (page - 1) * limit;
 
   const conditions = [];
@@ -47,7 +47,7 @@ router.get("/inventory", requireAuth, async (req, res): Promise<void> => {
     .limit(limit)
     .offset(offset);
 
-  res.json({ data, total: totalRow.count, page, limit });
+  res.json({ data, total: totalRow.count, page, limit, totalPages: Math.ceil(totalRow.count / limit) });
 });
 
 router.post("/inventory", requireAdmin, async (req, res): Promise<void> => {

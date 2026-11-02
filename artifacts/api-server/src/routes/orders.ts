@@ -64,7 +64,7 @@ router.get("/orders", requireAuth, async (req, res): Promise<void> => {
   const dateFrom = query.success ? query.data.dateFrom : undefined;
   const dateTo = query.success ? query.data.dateTo : undefined;
   const page = (query.success && query.data.page) ? Number(query.data.page) : 1;
-  const limit = (query.success && query.data.limit) ? Number(query.data.limit) : 20;
+  const limit = (query.success && query.data.limit) ? Math.min(Number(query.data.limit), 500) : 100;
   const offset = (page - 1) * limit;
 
   const conditions: ReturnType<typeof eq>[] = [];
@@ -128,6 +128,7 @@ router.get("/orders", requireAuth, async (req, res): Promise<void> => {
     total: totalRow.count,
     page,
     limit,
+    totalPages: Math.ceil(totalRow.count / limit),
   });
 });
 

@@ -50,6 +50,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, Edit, Trash2, Package, ChevronsUpDown, Check, X, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
+import { DataTablePagination } from "@/components/common/data-table-pagination";
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
@@ -66,14 +67,14 @@ export default function Products() {
   const [search, setSearch] = useState("");
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(100);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
 
-  const limit = 10;
   const { data, isLoading } = useListProducts(
-    { search: search || undefined, page, limit },
-    { query: { queryKey: getListProductsQueryKey({ search: search || undefined, page, limit }) } }
+    { search: search || undefined, page, limit: pageSize },
+    { query: { queryKey: getListProductsQueryKey({ search: search || undefined, page, limit: pageSize }) } }
   );
 
   const { data: allProductsData } = useListProducts(
@@ -286,7 +287,7 @@ export default function Products() {
                 {data.data.map((p) => (
                   <tr key={p.id} className="hover:bg-muted/30 transition-colors" data-testid={`row-product-${p.id}`}>
                     <td className="px-6 py-3 font-medium">{p.name}</td>
-                    <td className="px-4 py-3 text-muted-foreground hidden md:table-cell max-w-[240px] truncate">{p.description || "—"}</td>
+                    <td className="px-4 py-3 text-muted-foreground hidden md:table-cell max-w-[240px] truncate">{p.description ? p.description.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() : "—"}</td>
                     <td className="px-4 py-3 text-right font-medium">{formatCurrency(p.price)}</td>
                     <td className="px-4 py-3 text-right">
                       <Badge variant={p.availableQuantity === 0 ? "destructive" : p.availableQuantity <= 2 ? "secondary" : "outline"}>
@@ -311,49 +312,20 @@ export default function Products() {
         </CardContent>
       </Card>
 
-      {/* Clickable Page Numbers Pagination */}
       {data && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground pt-2">
-          <span>Showing {data.total > 0 ? (page - 1) * limit + 1 : 0}–{Math.min(page * limit, data.total)} of {data.total} products</span>
-          
-          <div className="flex items-center gap-1.5" data-testid="products-pagination-numbers">
-            <span className="text-xs font-semibold mr-1">Pages:</span>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 cursor-pointer"
-              disabled={page === 1}
-              onClick={() => setPage(p => p - 1)}
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-
-            {Array.from({ length: Math.max(1, Math.ceil(data.total / limit)) }, (_, i) => i + 1).map((pNum) => (
-              <Button
-                key={pNum}
-                variant={page === pNum ? "default" : "outline"}
-                size="sm"
-                className={`h-8 min-w-8 px-2 text-xs font-extrabold cursor-pointer transition-all ${
-                  page === pNum ? "shadow-sm bg-primary text-primary-foreground font-bold" : "hover:bg-accent"
-                }`}
-                onClick={() => setPage(pNum)}
-                data-testid={`button-products-page-${pNum}`}
-              >
-                {pNum}
-              </Button>
-            ))}
-
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 cursor-pointer"
-              disabled={page >= Math.max(1, Math.ceil(data.total / limit))}
-              onClick={() => setPage(p => p + 1)}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
+        <DataTablePagination
+          currentPage={page}
+          totalPages={Math.ceil(data.total / pageSize)}
+          pageSize={pageSize}
+          totalItems={data.total}
+          onPageChange={setPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setPage(1);
+          }}
+          pageSizeOptions={[25, 50, 100, 200]}
+          itemLabel="jewellery products"
+        />
       )}
 
       <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditProduct(null); }}>

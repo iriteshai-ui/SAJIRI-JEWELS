@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api-client";
+import { DataTablePagination } from "@/components/common/data-table-pagination";
 
 export default function Catalogue() {
   const [, setLocation] = useLocation();
@@ -41,6 +42,7 @@ export default function Catalogue() {
   const [sortOption, setSortOption] = useState<string>("newest");
   const [mobileFilterOpen, setMobileFilterOpen] = useState<boolean>(false);
   const [displayLimit, setDisplayLimit] = useState<number>(100);
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   // Fetch Categories
   const { data: categories = [] } = useQuery({
@@ -61,9 +63,11 @@ export default function Catalogue() {
       inStockOnly,
       sortOption,
       displayLimit,
+      currentPage,
     ],
     queryFn: async () => {
       const params: Record<string, any> = {
+        page: currentPage,
         limit: displayLimit,
         sort: sortOption,
       };
@@ -121,12 +125,12 @@ export default function Catalogue() {
               type="text"
               placeholder="Search necklaces, earrings, rings, bangles..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
               className="pl-9.5 pr-4 py-2 bg-neutral-50/80 border-amber-200/60 rounded-full text-sm focus-visible:ring-amber-500"
             />
             {searchQuery && (
               <button
-                onClick={() => setSearchQuery("")}
+                onClick={() => { setSearchQuery(""); setCurrentPage(1); }}
                 className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-600 hover:text-neutral-700"
               >
                 <X className="w-3.5 h-3.5" />
@@ -157,7 +161,7 @@ export default function Catalogue() {
               type="text"
               placeholder="Search jewellery catalogue..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
               className="pl-9 pr-3 py-1.5 bg-neutral-50 border-amber-200/60 rounded-full text-xs"
             />
           </div>
@@ -168,7 +172,7 @@ export default function Catalogue() {
       <div className="bg-white border-b border-amber-100 overflow-x-auto scrollbar-none py-2.5 px-4 sm:px-8">
         <div className="max-w-7xl mx-auto flex items-center gap-2">
           <button
-            onClick={() => setSelectedCategory("all")}
+            onClick={() => { setSelectedCategory("all"); setCurrentPage(1); }}
             className={`px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
               selectedCategory === "all"
                 ? "bg-amber-600 text-white shadow-sm shadow-amber-600/30 font-semibold"
@@ -184,7 +188,7 @@ export default function Catalogue() {
             return (
               <button
                 key={cat.id}
-                onClick={() => setSelectedCategory(cat.name)}
+                onClick={() => { setSelectedCategory(cat.name); setCurrentPage(1); }}
                 className={`px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
                   isSelected
                     ? "bg-amber-600 text-white shadow-sm shadow-amber-600/30 font-semibold"
@@ -402,19 +406,26 @@ export default function Catalogue() {
           </div>
         )}
 
-        {/* Load More Button */}
-        {!isLoading && products.length < totalCount && (
-          <div className="flex flex-col items-center justify-center mt-12 gap-3">
-            <p className="text-xs text-neutral-500 font-mono">
-              Showing {products.length} of {totalCount} jewellery pieces
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => setDisplayLimit((prev) => prev + 100)}
-              className="px-8 py-2.5 h-11 text-xs font-bold tracking-wider uppercase border-amber-600/40 text-amber-900 dark:text-amber-200 hover:bg-amber-500/10 cursor-pointer shadow-xs rounded-full transition-all"
-            >
-              Load More Jewellery ({totalCount - products.length} Remaining)
-            </Button>
+        {/* Full Interactive Pagination */}
+        {!isLoading && totalCount > 0 && (
+          <div className="mt-12 bg-white/90 backdrop-blur-md rounded-2xl p-4 border border-amber-200/60 shadow-sm">
+            <DataTablePagination
+              currentPage={currentPage}
+              totalPages={catalogueData?.totalPages || Math.ceil(totalCount / displayLimit)}
+              pageSize={displayLimit}
+              totalItems={totalCount}
+              onPageChange={(p) => {
+                setCurrentPage(p);
+                window.scrollTo({ top: 380, behavior: "smooth" });
+              }}
+              onPageSizeChange={(newSize) => {
+                setDisplayLimit(newSize);
+                setCurrentPage(1);
+                window.scrollTo({ top: 380, behavior: "smooth" });
+              }}
+              pageSizeOptions={[24, 48, 100, 200]}
+              itemLabel="jewellery pieces"
+            />
           </div>
         )}
       </main>

@@ -24,6 +24,7 @@ import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList, CommandI
 import { Input } from "@/components/ui/input";
 import { Plus, History, ArrowUpCircle, ArrowDownCircle, ShoppingCart, ChevronLeft, ChevronRight, Search, ChevronsUpDown, Check, X, Package, FileSpreadsheet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { DataTablePagination } from "@/components/common/data-table-pagination";
 
 const adjustSchema = z.object({
   productId: z.coerce.number().min(1, "Select a product"),
@@ -46,11 +47,11 @@ export default function Inventory() {
   const [search, setSearch] = useState("");
   const [searchDropdownOpen, setSearchDropdownOpen] = useState(false);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(100);
 
-  const limit = 10;
   const { data, isLoading } = useListInventory(
-    { productId: productFilter, search: search || undefined, page, limit },
-    { query: { queryKey: getListInventoryQueryKey({ productId: productFilter, search: search || undefined, page, limit }) } }
+    { productId: productFilter, search: search || undefined, page, limit: pageSize },
+    { query: { queryKey: getListInventoryQueryKey({ productId: productFilter, search: search || undefined, page, limit: pageSize }) } }
   );
 
   const { data: productsData } = useListProducts(
@@ -246,49 +247,20 @@ export default function Inventory() {
         </CardContent>
       </Card>
 
-      {/* Clickable Page Numbers Pagination */}
       {data && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground pt-2">
-          <span>Showing {data.total > 0 ? (page - 1) * limit + 1 : 0}–{Math.min(page * limit, data.total)} of {data.total} items</span>
-          
-          <div className="flex items-center gap-1.5" data-testid="inventory-pagination-numbers">
-            <span className="text-xs font-semibold mr-1">Pages:</span>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 cursor-pointer"
-              disabled={page === 1}
-              onClick={() => setPage(p => p - 1)}
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-
-            {Array.from({ length: Math.max(1, Math.ceil(data.total / limit)) }, (_, i) => i + 1).map((pNum) => (
-              <Button
-                key={pNum}
-                variant={page === pNum ? "default" : "outline"}
-                size="sm"
-                className={`h-8 min-w-8 px-2 text-xs font-extrabold cursor-pointer transition-all ${
-                  page === pNum ? "shadow-sm bg-primary text-primary-foreground font-bold" : "hover:bg-accent"
-                }`}
-                onClick={() => setPage(pNum)}
-                data-testid={`button-inventory-page-${pNum}`}
-              >
-                {pNum}
-              </Button>
-            ))}
-
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 cursor-pointer"
-              disabled={page >= Math.max(1, Math.ceil(data.total / limit))}
-              onClick={() => setPage(p => p + 1)}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
+        <DataTablePagination
+          currentPage={page}
+          totalPages={Math.ceil(data.total / pageSize)}
+          pageSize={pageSize}
+          totalItems={data.total}
+          onPageChange={setPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setPage(1);
+          }}
+          pageSizeOptions={[25, 50, 100, 200]}
+          itemLabel="inventory audit logs"
+        />
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

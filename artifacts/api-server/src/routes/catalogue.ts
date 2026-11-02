@@ -47,7 +47,7 @@ router.get("/catalogue/products", async (req, res): Promise<void> => {
     const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : undefined;
     const sort = req.query.sort as string | undefined; // 'price_asc' | 'price_desc' | 'newest'
     const page = Math.max(Number(req.query.page) || 1, 1);
-    const limit = Math.min(Number(req.query.limit) || 48, 500);
+    const limit = Math.min(Number(req.query.limit) || 100, 500);
     const offset = (page - 1) * limit;
 
     const conditions = [eq(productsTable.isActive, true)];
