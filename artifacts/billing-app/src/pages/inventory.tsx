@@ -111,7 +111,7 @@ export default function Inventory() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
           <Input
-            placeholder="Smart Search Crystal Type in Log..."
+            placeholder="Smart Search Jewellery Item in Log..."
             className="pl-9 pr-8"
             value={search}
             onChange={(e) => {
@@ -152,10 +152,10 @@ export default function Inventory() {
           </PopoverTrigger>
           <PopoverContent className="w-[300px] p-0" align="start">
             <Command>
-              <CommandInput placeholder="Search crystal type..." />
+              <CommandInput placeholder="Search jewellery item..." />
               <CommandList className="max-h-[260px] overflow-y-auto">
-                <CommandEmpty>No matching crystal type found.</CommandEmpty>
-                <CommandGroup heading="Filter by Crystal Type">
+                <CommandEmpty>No matching jewellery item found.</CommandEmpty>
+                <CommandGroup heading="Filter by Jewellery Item">
                   <CommandItem
                     value="--all-products--"
                     onSelect={() => {
@@ -207,7 +207,7 @@ export default function Inventory() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/40">
-                  <th className="text-left px-6 py-3 font-medium text-muted-foreground">CRYSTAL TYPE</th>
+                  <th className="text-left px-6 py-3 font-medium text-muted-foreground">JEWELLERY ITEM</th>
                   <th className="text-left px-4 py-3 font-medium text-muted-foreground">Action</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">Previous</th>
                   <th className="text-right px-4 py-3 font-medium text-muted-foreground">Change</th>

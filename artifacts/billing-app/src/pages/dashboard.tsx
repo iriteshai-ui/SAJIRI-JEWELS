@@ -373,7 +373,7 @@ export default function Dashboard() {
               <CardTitle className="text-base font-bold flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
                   <PieIcon className="w-4 h-4 text-primary" />
-                  Top Crystal Types (Pie Chart by Qty Sold)
+                  Top Jewellery Pieces (Pie Chart by Qty Sold)
                 </span>
                 <Badge variant="outline" className="text-[10px] font-mono">Product Share</Badge>
               </CardTitle>
@@ -482,7 +482,7 @@ export default function Dashboard() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/40 text-xs text-muted-foreground">
-                      <th className="text-left px-4 py-2.5 font-semibold">CRYSTAL TYPE</th>
+                      <th className="text-left px-4 py-2.5 font-semibold">JEWELLERY PIECE</th>
                       <th className="text-right px-4 py-2.5 font-semibold">Qty Sold</th>
                       <th className="text-right px-4 py-2.5 font-semibold">Total Sales</th>
                     </tr>

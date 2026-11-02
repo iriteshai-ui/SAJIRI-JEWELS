@@ -258,7 +258,7 @@ export default function OrderDetail() {
             <thead>
               <tr className="border-b bg-muted/40">
                 <th className="text-left px-6 py-3 font-medium text-muted-foreground">#</th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">CRYSTAL TYPE</th>
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground">JEWELLERY ITEM</th>
                 <th className="text-right px-4 py-3 font-medium text-muted-foreground">Unit Price</th>
                 <th className="text-right px-4 py-3 font-medium text-muted-foreground">Qty</th>
                 <th className="text-right px-6 py-3 font-medium text-muted-foreground">Total</th>

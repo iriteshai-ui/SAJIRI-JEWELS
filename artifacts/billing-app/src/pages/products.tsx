@@ -242,7 +242,7 @@ export default function Products() {
                     >
                       <div className="flex flex-col gap-0.5 max-w-[200px]">
                         <span className="font-semibold text-sm text-foreground truncate">{p.name}</span>
-                        <span className="text-xs text-muted-foreground truncate">{p.description || "Crystal Type"}</span>
+                        <span className="text-xs text-muted-foreground truncate">{p.description || p.category || "Fashion Jewellery"}</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <span className="text-xs font-mono font-bold text-primary">{formatCurrency(p.price)}</span>
