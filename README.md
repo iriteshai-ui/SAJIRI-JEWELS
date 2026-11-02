@@ -1,220 +1,156 @@
-# OptimaGodown – Billing & Inventory Management System (abe Jaldi kar Panvel Nikalna hai :) )
+# 💎 SAJIRI JEWELS — Modern Fashion Jewellery Inventory & Catalogue Platform
 
-Welcome to the **OptimaGodown** codebase. This is a web-based monorepo application designed to manage product catalogs, track real-time inventory adjustments, execute customer sales orders, generate print-ready invoice PDFs, and control user access with role-based permissions (RBAC).
+[![License: MIT](https://img.shields.io/badge/License-MIT-amber.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
+[![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
+[![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ecf8e.svg)](https://supabase.com/)
+
+**SAJIRI JEWELS** is an end-to-end Luxury Fashion Jewellery Inventory Management & Customer Catalogue Platform. It empowers jewellery businesses to manage private product inventories, import and scrub supplier collections, log real-time stock movements with audit trails, generate BIS-hallmark ready PDF invoices with 3% jewellery GST, and showcase collections through a responsive public customer catalogue.
 
 ---
 
-## 1. Codebase Architecture
+## 🌟 Key Features
 
-The application is configured as a **PNPM Workspace Monorepo**, dividing core concerns into modular packages:
+### 1. 🛍️ Luxury Customer Catalogue
+- **Curated Collections**: Browse anti-tarnish, waterproof, and hypoallergenic fashion jewellery across Necklaces, Bangles, Bracelets, Earrings, and Rings.
+- **Instant Search & Filters**: Search by item name, material finish (Gold Plated, Silver, Rose Gold), or category, with in-stock filters.
+- **Product Details & Inquiries**: High-resolution image galleries, price comparisons, anti-tarnish warranty specs, and direct WhatsApp inquiry integration.
+- **Smart 100-Record Pagination**: Smooth-scrolling pagination with custom page sizes (25, 50, 100, 200 items per page).
+
+### 2. 📊 Real-Time Management Dashboard
+- **100% Live DB Analytics**: Zero mock data. Live computation of total inventory valuation, daily sales, active orders, and monthly revenue.
+- **Visual Sales Trends**: Interactive charts showing 7-day revenue performance.
+- **Low Stock Guard**: Real-time alerts highlighting products with fewer than 10 units in stock.
+- **Recent Order Stream**: Instant visibility into order fulfillment status, payment progress, and customer details.
+
+### 3. 📦 Product Inventory & Supplier Importer Studio
+- **Supplier Importer Studio**: Batch-fetch supplier collections with one-click import into your private Supabase database.
+- **Automatic Brand Scrubbing**: Replaces third-party supplier branding (e.g. PRAO) with **SAJRI** across all titles, descriptions, and SKUs.
+- **Rich Fashion Jewellery Attributes**: Tracks metal type, plating, gross/net weight, stone weight, HUID hallmark numbers, and HSN codes (7113).
+
+### 4. 📝 Real-Time Inventory Audit Logging
+- **Automated Audit Trail**: Automatically logs an immutable transaction record whenever stock is added, reduced, manually adjusted, or sold via an order.
+- **Product Edit Auditing**: Updates on `/products` automatically log previous quantity, change amount, and current quantity with admin user attribution.
+- **Detailed History Table**: Color-coded badges for *Stock Added*, *Stock Reduced*, *Order Fulfilled*, *Product Updated*, and *Supplier Import*.
+
+### 5. 🧾 Orders, Billing & PDF Tax Invoices
+- **Jewellery GST Compliance**: Applies standard Indian **3% Jewellery GST** (1.5% CGST + 1.5% SGST) dynamically.
+- **Smart Item Selector**: Live autocomplete searching with real-time stock deduction protection.
+- **Split & Partial Payments**: Tracks cash, UPI, and bank transfers with outstanding balance monitoring.
+- **Vector PDF Invoice Generation**: Generates clean, print-ready tax invoices formatted specifically for fashion jewellery (without cluttered static terms).
+
+---
+
+## 🏛️ Monorepo Architecture
+
+The project is structured as a **PNPM Workspace Monorepo**:
 
 ```
 ├── artifacts/
-│   ├── api-server/         # Express.js REST API Backend
-│   └── billing-app/        # Vite + React.js Single Page Frontend (SPA)
+│   ├── api-server/         # Express 5 REST API Backend (TypeScript, ESBuild)
+│   └── billing-app/        # Vite 7 + React 19 Frontend SPA (Tailwind CSS, Radix UI)
 ├── lib/
-│   ├── api-client-react/   # Generated Axios-based React Query client hooks
+│   ├── api-client-react/   # Type-safe Axios + React Query hooks generated from OpenAPI
 │   ├── api-spec/           # OpenAPI 3.1.0 Contract Specification (openapi.yaml)
-│   ├── api-zod/            # Generated Zod validators shared between client/server
-│   └── db/                 # Drizzle ORM schema definitions, connections, and seeders
-├── attached_assets/        # Attached product media and PRD assets
-└── walkthrough.md          # Chronological list of migration and feature updates
+│   ├── api-zod/            # Shared Zod validation schemas across frontend & backend
+│   └── db/                 # Drizzle ORM schemas, Supabase PostgreSQL pool, and seeders
+├── supabase/
+│   └── migrations/         # Supabase PostgreSQL SQL migration scripts
+├── TASK_LIST.md            # Chronological record of completed features and bug fixes
+└── README.md               # Project documentation
 ```
 
 ---
 
-## 2. Technical Specification
+## 🗄️ Database Schema
 
-### Tech Stack
-* **Frontend**: React.js 18, Vite 7, TailwindCSS (Vanilla utility styles), Lucide React (Icons), Wouter (Routing), TanStack React Query (State/Cache).
-* **Backend**: Node.js, Express.js, TypeScript (esbuild compiler).
-* **Database**: PostgreSQL 16 managed via **Drizzle ORM** for type-safe query building and automatic migration pushes.
-* **Authentication**: Express Session store backed by PostgreSQL (`connect-pg-simple`), password hashing using `bcryptjs`.
-* **API Generation**: Contract-first design using **OpenAPI 3.1.0** and **Orval** to generate server-side validation schemas and React frontend Query hooks automatically.
-* **PDF Generator**: Native vector document layouts built with `pdfkit`.
+Managed via **Drizzle ORM** on **Supabase PostgreSQL**:
 
----
-
-## 3. Database Schema
-
-The system uses **7 primary tables** managed through Drizzle:
-
-1. **Users** (`usersTable`): Stores staff accounts with role flags (`admin` / `user`), active flags, and bcrypt-encrypted password hashes.
-2. **Products** (`productsTable`): Product catalog containing names, prices, descriptions, and current warehouse stock counts.
-3. **Inventory Transactions** (`inventoryTable`): Historical audit log tracking all warehouse adjustments (`add` / `reduce` / `order`), referencing the editor and products.
-4. **Orders** (`ordersTable`): Customer invoices containing subtotal, tax breakdown, discounts, referral charges, grand total, amount paid, pending amount, and status.
-5. **Order Items** (`orderItemsTable`): Line-item details mapping orders to products, quantity, and historical pricing.
-6. **Session** (`sessionTable`): Backing PostgreSQL schema that holds Express active cookie sessions to avoid memory leakage and support clustering.
+| Table | Description |
+|---|---|
+| `users` | Staff & administrator accounts with bcrypt password hashes and RBAC (`admin`, `user`). |
+| `categories` | Jewellery classification tree (Necklaces, Earrings, Bangles, Bracelets, Rings). |
+| `products` | 580+ private inventory records with pricing, weights, hallmark UIDs, and anti-tarnish specs. |
+| `inventory_transactions` | Audit log tracking every stock change (`add`, `reduce`, `update`, `order`, `import`). |
+| `orders` | Sales orders tracking subtotal, 3% GST, discount, net amount, paid amount, and status. |
+| `order_items` | Line items linked to orders and products with historical unit prices and quantities. |
+| `order_payments` | Granular payment transactions tracking payment mode (Cash, UPI) and reference IDs. |
+| `session` | PostgreSQL-backed session store for secure authentication cookies. |
 
 ---
 
-## 4. Product Requirements (PRD) Details
-
-### User Roles
-* **Admin Role**:
-  * **Dashboard**: Full access to total products, aggregate inventory volume, total order stats, sales metrics (today's/monthly), and active user accounts.
-  * **Product Catalog**: Read, create, edit, delete, and search items.
-  * **Inventory Log**: View stock movement histories and manual adjustments (restocks/markdowns).
-  * **Order Operations**: Create new customer orders and view all order histories.
-  * **Staff Management**: Create, edit, activate/deactivate, and reset passwords for user accounts.
-* **User/Staff Role**:
-  * **Dashboard**: Views personalized metrics: orders created today, total orders, and total revenue.
-  * **Order Operations**: Create new customer orders, view own order history, and download invoice PDFs.
-  * *Blocked Areas*: Prevented from accessing product, inventory, or user management screens.
-
-### Business Logic & Validations
-* **Stock Security**: Prevent order checkout if the requested product quantity exceeds available godown stock.
-* **Low Stock Warning**: Alert badges and visual warning boxes are highlighted on the dashboard when a product's available quantity drops below `10` units.
-* **Invoice Layouts**: Generates structured invoice layouts including totals, discount deductions, referral charges, GST tax details, and payment statuses.
-* **Mock Emailing**: Provides a visual confirmation popup signifying that mock email delivery to the customer succeeded.
-
-### Advanced Partial Payment Features
-* **Paid vs. Pending Tracking**: During order checkout, staff can input a custom "Amount Paid" value. The system dynamically computes the "Pending Balance" (`Grand Total - Paid Amount`).
-* **Auto-Status**: If the pending balance is greater than `0`, the order is marked as `pending` (otherwise `completed`).
-* **Outstanding Alerts**: Pending orders blink and are highlighted in a tinted orange row on the history table, allowing staff to quickly identify accounts requiring follow-ups.
-
----
-
-## 5. Local Setup & Running Guide
+## 🚀 Getting Started
 
 ### Prerequisites
-* **Node.js**: `v20` or higher.
-* **PNPM**: Installed globally (`npm install -g pnpm`).
-* **Docker Desktop**: For running the local PostgreSQL container.
+- **Node.js**: `v20.x` or higher
+- **PNPM**: `pnpm` (`corepack enable` or `npm install -g pnpm`)
+- **Supabase Account**: A Supabase PostgreSQL database URL
 
-### Step 1: Clone and Install Dependencies
-Ensure you are in the workspace root directory, then run:
+### 1. Clone the Repository
+```bash
+git clone https://github.com/iriteshai-ui/SAJIRI-JEWELS.git
+cd SAJIRI-JEWELS
+```
+
+### 2. Install Dependencies
 ```bash
 pnpm install
 ```
 
-### Step 2: Spin Up the Local Database
-Run the PostgreSQL Docker container:
-```bash
-docker run --name inventory-postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=inventory_masters -p 5432:5432 -d postgres:16
-```
-
-### Step 3: Configure Environment Variables
-Create a `.env` file in the root directory:
+### 3. Configure Environment Variables
+Create a `.env` file in the project root:
 ```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/inventory_masters
-SESSION_SECRET=billing-secret-key
-PORT=5173
+PORT=8080
+DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@[YOUR-HOST]:5432/postgres
+SESSION_SECRET=sajiri-jewels-secure-secret-key-2026
+NODE_ENV=development
 ```
 
-### Step 4: Run Migrations and Seed Data
-Push the Drizzle schema to your PostgreSQL database:
+### 4. Run Migrations & Build
 ```bash
+# Push database migrations to Supabase
 pnpm --filter @workspace/db run push
+
+# Build all workspace packages
+pnpm run build
 ```
 
-Populate the database with default staff roles, sample products, and sample inventory movements:
+### 5. Start the Application
+Run both backend API and frontend dev servers concurrently:
 ```bash
-pnpm --filter @workspace/db run seed
-```
+# In terminal 1 (API Server on port 8080)
+pnpm --filter @workspace/api-server run start
 
-### Step 5: Start Development Servers
-Start both the Express API server and the Vite dev server concurrently:
-```bash
-pnpm dev
+# In terminal 2 (Vite Client on port 5173)
+pnpm --filter @workspace/billing-app run dev
 ```
-* **Frontend**: `http://localhost:5173/`
-* **Backend API**: `http://localhost:8080/`
 
 ---
 
-## 6. Access Credentials
+## 🔐 Default Access Credentials
 
-The database seeder provisions two default roles for exploring the system:
+| Role | Username | Password | Access Level |
+|---|---|---|---|
+| **Administrator** | `admin` | `admin123` | Full access: Catalogue, Importer, Inventory, Products, Users, Settings |
+| **Sales Staff** | `user` | `user123` | Billing, Order Creation, Customer Invoices, Catalogue |
 
-| Username | Password | Role | Access Level |
-| :--- | :--- | :--- | :--- |
-| **admin** | `admin123` | **Admin** | Full Management |
-| **user** | `user123` | **User** | Orders & Invoices Only |
+---
 
+## 🌐 Application URLs
 
-MOM on 1st Aug - 
-**Task & System Updates**- Done
-Removed Features / Fields
+| Interface | URL | Purpose |
+|---|---|---|
+| **Public Customer Catalogue** | [http://localhost:5173/catalogue](http://localhost:5173/catalogue) | Customer product browsing & inquiries |
+| **Management Portal Login** | [http://localhost:5173/login](http://localhost:5173/login) | Staff & Administrator sign-in |
+| **Dashboard** | [http://localhost:5173/dashboard](http://localhost:5173/dashboard) | Live revenue, orders, stock alerts |
+| **Jewellery Inventory** | [http://localhost:5173/products](http://localhost:5173/products) | 100-record paginated product management |
+| **Inventory Audit Log** | [http://localhost:5173/inventory](http://localhost:5173/inventory) | Real-time stock audit trail |
+| **Product Importer Studio** | [http://localhost:5173/importer](http://localhost:5173/importer) | Supplier collection import |
+| **Orders & Invoices** | [http://localhost:5173/orders](http://localhost:5173/orders) | GST Billing & PDF invoice downloads |
+| **API Server** | [http://localhost:8080/api](http://localhost:8080/api) | Express REST endpoints |
 
-Created By
+---
 
-Status
-
-Header Invoice Number (Inv no) along with created date
-
-
-**⚙️ Field & Logic Changes**
-Invoice Number Format: Update format to INV—YYYYMMDD-01(series) - Done & verified   
-
-Amount Paid: Add payment method options (Cash or UPI) - Done & verified 
-
-Side Order Details (Nikita's Feedback): Update the side order details section as requested -  renovated 
-
-Low Stock Alert Threshold: Lower threshold from 5 to 2- Done 
-
-Bill Name & Labels: Rename Product to CRYSTAL TYPE- done & verified  
-
-GST & Discount Display Logic: If the value is 0, do not print it on the bill - Done & verified  
-
-Order history - same row updated with the remarks - Done 
-
-Smart Search with Dropdown- order / new orders / Add product - Done & verified 
-
-Product Add - quantity update - deletion Bug to be Fixed - done and verified 
-
-New order- Create order - Print option is required and the print formate should be same invoice bill formate - Done and verified
-
-Mobile no should be 10 digital and start with only 7,8,9 and 6 - done and verified 
-
-A4 Size - Print / invocie - Done & verified
-
-Add shop name and address above invoice number - Done and verified 
-Aloha Crystal World
-Vedanta Heights, Shri Colony,
-Dastur Nagar, Amravati.
-Mob - 8369495476
-
-
-Remove ** Tax Invoice** from Bill
-Add date field while editing bill
-
-. Bill & Print Customizations
-Signature Block: At the bottom of the bill, add a signature line with (Aloha Crystal World) printed in a light/muted color underneath it.
-
-Customer Field Label: Change "Bill To" to "Mr. / Mrs."
-
-Discount Field: Add the Discount field while create a order and to the bill layout as a Required print item (currently missing) if discount value is zero, then don't print it on the bill.
-
-⚙️ 2. UI & Navigation Updates- ----done & verified 
-Date Filter Dropdown: Add a dropdown menu with quick filters for "This Month" and "Previous Month" and give some sale dashboard month wise order and revenue.Also add product wise etc.
-
-Order & Invoice Summary Screen: Add an "Edit" option on the confirmation page that appears right after clicking Create Order and Invoice.
-
-Inventory Log Pagination: Replace the "Previous / Next" buttons with standard Page Numbers (e.g., 1, 2, 3...) with link so that user can click on number and move to page.
-
-🔍 3. System Features & Access Control- ----done & verified 
-Product Search: Add a Smart Search bar (instant filtering/auto-suggest) and dropdown in the All Products section.
-
-User Access Control: Remove User-level access completely—the system should now require Admin-only access.
-
-Dynamic Summary Cards & Detailed Tables:
-
-Filtered metrics cards displaying Total Orders, Total Revenue, Total Paid Amount, and Pending Balance for the selected date range.
-Month-wise and Product-wise breakdown tables.----done & verified 
-
-TAX INVOICE - done & verified
-1. Discount field should be dropdown with values - 0% and 5%
-2. On bill, "Aloha Crystal World" should be "Aloha Crystal World, Amravati"
-3. Some superscript character is appearing on the Amount field. For example, if the value is 2100.0, it is appearing as ¹2100.00
-4. Bill color changes as discussed on whatsapp.
-5. INV series should get updated with +1 always. Shouldn't start with -01 for the day change
-6. Need backup in excel for the inventory data, monthly/daily sales, total revenue and all orders.
-
-Set 2
-1. GST to be defaulted to 0% - done & verified
-2. Aloha Color orange - done & verified
-3. staff and user - remove other user - done & verified
-4. can we add date column in order new order to add the old bills to the system with old date - done & verified
-5. password can be changed from UI ? - done & verified
-6. remove other search box from Inventory and products page - done & verified
+## 📄 License
+MIT License © 2026 SAJIRI JEWELS. All rights reserved.
