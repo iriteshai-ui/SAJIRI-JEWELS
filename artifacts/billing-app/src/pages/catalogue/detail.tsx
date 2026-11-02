@@ -108,9 +108,7 @@ export default function CatalogueDetail() {
           </Link>
 
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white">
-              <Gem className="w-4 h-4" />
-            </div>
+            <img src="/favicon.svg" alt="SAJIRI JEWELS" className="w-8 h-8 rounded-full shadow-xs" />
             <span className="font-serif font-bold text-lg tracking-wider text-neutral-900">
               SAJIRI JEWELS
             </span>

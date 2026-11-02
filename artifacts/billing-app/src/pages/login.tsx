@@ -58,9 +58,11 @@ export default function Login() {
         {/* Logo/Brand Header */}
         <div className="flex items-center justify-between z-10">
           <Link href="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center shadow-gold-sm">
-              <Gem className="w-5 h-5 text-white" />
-            </div>
+            <img
+              src="/favicon.svg"
+              alt="SAJIRI JEWELS"
+              className="w-10 h-10 rounded-full shadow-gold-sm"
+            />
             <div>
               <span className="font-serif font-bold text-xl tracking-wider text-amber-50">
                 SAJIRI JEWELS

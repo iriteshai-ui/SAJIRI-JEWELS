@@ -74,9 +74,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2.5 font-serif font-bold text-lg select-none">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-              <Gem className="w-5 h-5" />
-            </div>
+            <img src="/favicon.svg" alt="SAJIRI JEWELS" className="w-8 h-8 rounded-full shadow-xs" />
             <span className="font-serif font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
               SAJIRI JEWELS
             </span>
