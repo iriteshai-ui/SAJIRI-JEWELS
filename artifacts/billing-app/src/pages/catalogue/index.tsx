@@ -423,7 +423,7 @@ export default function Catalogue() {
                 setCurrentPage(1);
                 window.scrollTo({ top: 380, behavior: "smooth" });
               }}
-              pageSizeOptions={[24, 48, 100, 200]}
+              pageSizeOptions={[25, 50, 100, 200]}
               itemLabel="jewellery pieces"
             />
           </div>
