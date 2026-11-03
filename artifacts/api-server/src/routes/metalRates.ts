@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, metalRatesTable } from "@workspace/db";
 import { desc } from "drizzle-orm";
-import { requireAuth, requireAdmin } from "../middlewares/auth";
+import { requireAuth, requireAdmin, getSessionUser } from "../middlewares/auth";
 import { z } from "zod";
 
 const router = Router();
@@ -58,7 +58,7 @@ router.post("/metal-rates", requireAdmin, async (req, res): Promise<void> => {
     return;
   }
 
-  const user = req.user;
+  const user = await getSessionUser(req);
   const { gold24k, gold22k, gold18k, silver, platinum } = parsed.data;
 
   try {

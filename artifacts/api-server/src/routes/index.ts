@@ -10,6 +10,7 @@ import metalRatesRouter from "./metalRates";
 import categoriesRouter from "./categories";
 import importerRouter from "./importer";
 import catalogueRouter from "./catalogue";
+import catalogueAuditRouter from "./catalogueAudit";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(metalRatesRouter);
 router.use(categoriesRouter);
 router.use(importerRouter);
 router.use(catalogueRouter);
+router.use(catalogueAuditRouter);
 
 export default router;

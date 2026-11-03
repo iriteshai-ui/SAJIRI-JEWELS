@@ -17,6 +17,7 @@ import {
   LogIn,
   Layers,
   X,
+  Maximize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api-client";
 import { DataTablePagination } from "@/components/common/data-table-pagination";
+import { FullscreenImageViewer } from "@/components/common/fullscreen-image-viewer";
 
 export default function Catalogue() {
   const [, setLocation] = useLocation();
@@ -43,6 +45,35 @@ export default function Catalogue() {
   const [mobileFilterOpen, setMobileFilterOpen] = useState<boolean>(false);
   const [displayLimit, setDisplayLimit] = useState<number>(100);
   const [currentPage, setCurrentPage] = useState<number>(1);
+
+  // Fullscreen High-Resolution Lightbox State
+  const [viewerState, setViewerState] = useState<{
+    isOpen: boolean;
+    images: string[];
+    initialIndex: number;
+    productTitle: string;
+    productPrice?: number;
+    productCategory?: string;
+  }>({
+    isOpen: false,
+    images: [],
+    initialIndex: 0,
+    productTitle: "",
+  });
+
+  const openViewer = (item: any, initialIndex = 0) => {
+    const itemImages = Array.isArray(item.images) && item.images.length > 0
+      ? item.images
+      : [item.primaryImage];
+    setViewerState({
+      isOpen: true,
+      images: itemImages,
+      initialIndex,
+      productTitle: item.name,
+      productPrice: item.price,
+      productCategory: item.category,
+    });
+  };
 
   // Fetch Categories
   const { data: categories = [] } = useQuery({
@@ -326,8 +357,17 @@ export default function Catalogue() {
                   href={`/catalogue/${item.id}`}
                   className="group bg-white rounded-xl overflow-hidden border border-amber-100/80 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:shadow-gold-md hover:border-amber-300 transition-all duration-300 flex flex-col"
                 >
-                  {/* Image Container with secondary hover swap */}
-                  <div className="relative aspect-square w-full bg-neutral-100 overflow-hidden">
+                  {/* Image Container with secondary hover swap & fullscreen trigger */}
+                  <div
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      openViewer(item, 0);
+                    }}
+                    className="relative aspect-square w-full bg-neutral-100 overflow-hidden cursor-zoom-in"
+                    title="Click to view full screen"
+                    data-testid={`image-card-catalogue-${item.id}`}
+                  >
                     <img
                       src={item.primaryImage}
                       alt={item.name}
@@ -344,6 +384,14 @@ export default function Catalogue() {
                         className="w-full h-full object-cover absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-500 scale-100 group-hover:scale-105"
                       />
                     )}
+
+                    {/* Fullscreen Hover Overlay Pill */}
+                    <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                      <span className="bg-white/95 text-neutral-900 text-[11px] font-semibold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 backdrop-blur-xs scale-95 group-hover:scale-100 transition-transform">
+                        <Maximize2 className="w-3.5 h-3.5 text-amber-700" />
+                        Full Screen
+                      </span>
+                    </div>
 
                     {/* Stock Status Pill */}
                     <div className="absolute top-2.5 left-2.5">
@@ -483,6 +531,17 @@ export default function Catalogue() {
           </div>
         </div>
       </footer>
+
+      {/* Fullscreen High-Resolution Image Viewer */}
+      <FullscreenImageViewer
+        isOpen={viewerState.isOpen}
+        onClose={() => setViewerState((prev) => ({ ...prev, isOpen: false }))}
+        images={viewerState.images}
+        initialIndex={viewerState.initialIndex}
+        productTitle={viewerState.productTitle}
+        productPrice={viewerState.productPrice}
+        productCategory={viewerState.productCategory}
+      />
     </div>
   );
 }

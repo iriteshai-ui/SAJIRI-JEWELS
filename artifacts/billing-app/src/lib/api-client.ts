@@ -9,7 +9,7 @@ export const api = {
       const qs = searchParams.toString();
       if (qs) fullUrl += (fullUrl.includes("?") ? "&" : "?") + qs;
     }
-    const res = await fetch(fullUrl, { headers: { Accept: "application/json" } });
+    const res = await fetch(fullUrl, { headers: { Accept: "application/json" }, credentials: "include" });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: res.statusText }));
       throw { response: { data: err }, message: err.error || res.statusText };
@@ -20,6 +20,7 @@ export const api = {
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
+      credentials: "include",
       body: data ? JSON.stringify(data) : undefined,
     });
     if (!res.ok) {
@@ -32,6 +33,7 @@ export const api = {
     const res = await fetch(url, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
+      credentials: "include",
       body: data ? JSON.stringify(data) : undefined,
     });
     if (!res.ok) {
@@ -41,7 +43,7 @@ export const api = {
     return { data: await res.json() };
   },
   delete: async (url: string) => {
-    const res = await fetch(url, { method: "DELETE" });
+    const res = await fetch(url, { method: "DELETE", credentials: "include" });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: res.statusText }));
       throw { response: { data: err }, message: err.error || res.statusText };

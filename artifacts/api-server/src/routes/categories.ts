@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, categoriesTable, productsTable } from "@workspace/db";
-import { eq, asc, sql } from "drizzle-orm";
+import { eq, asc, sql, and } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth";
 import { z } from "zod";
 
@@ -42,7 +42,7 @@ router.get("/categories", async (_req, res): Promise<void> => {
         count: sql<number>`count(*)::int`,
       })
       .from(productsTable)
-      .where(eq(productsTable.isActive, true))
+      .where(and(eq(productsTable.isActive, true), eq(productsTable.isVerified, true)))
       .groupBy(productsTable.category);
 
     const countMap = new Map(counts.map(c => [c.category?.toLowerCase(), c.count]));

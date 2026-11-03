@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, productsTable, inventoryTable, categoriesTable } from "@workspace/db";
 import { eq, or } from "drizzle-orm";
-import { requireAdmin } from "../middlewares/auth";
+import { requireAdmin, getSessionUser } from "../middlewares/auth";
 import { z } from "zod";
 
 const router = Router();
@@ -101,8 +101,8 @@ router.get("/importer/collections", requireAdmin, async (_req, res): Promise<voi
       res.status(502).json({ error: "Failed to connect to supplier collection catalog" });
       return;
     }
-    const data = await response.json();
-    const cleanCollections = (data.collections || []).map((c: any) => ({
+    const data = (await response.json()) as any;
+    const cleanCollections = (data?.collections || []).map((c: any) => ({
       id: c.id,
       title: c.title.replace(/prao/gi, "").trim(),
       handle: c.handle,
@@ -138,8 +138,8 @@ router.get("/importer/preview", requireAdmin, async (req, res): Promise<void> =>
       return;
     }
 
-    const data = await response.json();
-    const rawProducts = data.products || [];
+    const data = (await response.json()) as any;
+    const rawProducts = data?.products || [];
 
     // Check existing products in our DB to flag already imported items
     const existingProducts = await db
@@ -233,7 +233,7 @@ router.post("/importer/import", requireAdmin, async (req, res): Promise<void> =>
     return;
   }
 
-  const user = req.user;
+  const user = await getSessionUser(req);
   const items = parsed.data.products;
   const importedResults = [];
   let skippedDuplicates = 0;
@@ -279,11 +279,16 @@ router.post("/importer/import", requireAdmin, async (req, res): Promise<void> =>
         images: item.images,
         isFeatured: false,
         isActive: true,
-        // Internal supplier tracking (Admin only)
+        // Internal supplier tracking & verification (Admin only)
         supplierCost: String(item.supplierCost),
         supplierSource: "prao",
         supplierProductId: item.sourceId,
         supplierSku: item.sku || "",
+        isVerified: true,
+        verificationStatus: "verified",
+        sourceUrl: item.sku ? `https://prao.com/products/${item.sku.toLowerCase()}` : `https://prao.com/products?q=${item.sourceId}`,
+        verificationNotes: `Imported and verified from PRAO catalogue (Shopify ID: ${item.sourceId})`,
+        verifiedAt: new Date(),
       })
       .returning();
 

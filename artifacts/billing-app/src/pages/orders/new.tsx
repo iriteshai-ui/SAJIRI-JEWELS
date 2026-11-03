@@ -253,7 +253,7 @@ export default function NewOrder() {
         {
           productId: selectedProduct.id,
           productName: selectedProduct.name,
-          category: selectedProduct.category,
+          category: (selectedProduct as any).category || "Jewellery",
           price: Number(selectedProduct.price),
           quantity: itemQuantity,
           availableQuantity: selectedProduct.availableQuantity,
@@ -661,9 +661,9 @@ export default function NewOrder() {
                 {selectedProduct && (
                   <div className="flex items-center justify-between p-2.5 rounded-lg bg-primary/5 border border-primary/20 text-xs">
                     <div className="flex items-center gap-2.5">
-                      {selectedProduct.images?.[0] ? (
+                      {(selectedProduct as any).images?.[0] ? (
                         <img
-                          src={selectedProduct.images[0]}
+                          src={(selectedProduct as any).images[0]}
                           alt={selectedProduct.name}
                           className="w-10 h-10 rounded-md object-cover border border-border"
                         />
@@ -675,7 +675,7 @@ export default function NewOrder() {
                       <div>
                         <p className="font-bold text-foreground line-clamp-1">{selectedProduct.name}</p>
                         <p className="text-muted-foreground">
-                          Category: <span className="text-foreground font-medium">{selectedProduct.category || "Jewellery"}</span> · Stock: <span className="text-emerald-600 font-bold">{selectedProduct.availableQuantity} units</span>
+                          Category: <span className="text-foreground font-medium">{(selectedProduct as any).category || "Jewellery"}</span> · Stock: <span className="text-emerald-600 font-bold">{selectedProduct.availableQuantity} units</span>
                         </p>
                       </div>
                     </div>

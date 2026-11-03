@@ -16,6 +16,7 @@ import {
   Gem,
   ExternalLink,
   Users,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -52,6 +53,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Product Importer", href: "/importer", icon: Download },
     { label: "Jewellery Products", href: "/products", icon: Gem },
+    ...(user.role === "admin" ? [{ label: "Catalogue Accuracy", href: "/catalogue-accuracy", icon: ShieldCheck }] : []),
     { label: "Categories", href: "/categories", icon: FolderTree },
     { label: "Orders & Billing", href: "/orders", icon: ShoppingCart },
     { label: "Inventory Log", href: "/inventory", icon: History },

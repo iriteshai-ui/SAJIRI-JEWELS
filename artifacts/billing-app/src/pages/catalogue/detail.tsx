@@ -15,18 +15,24 @@ import {
   Share2,
   Layers,
   ChevronRight,
+  Maximize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth-context";
+import { FullscreenImageViewer } from "@/components/common/fullscreen-image-viewer";
+import { PraoMlLink } from "@/lib/prao-link";
 
 export default function CatalogueDetail() {
   const [, params] = useRoute("/catalogue/:id");
   const productId = params?.id;
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["catalogue-product-detail", productId],
@@ -99,6 +105,27 @@ export default function CatalogueDetail() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF9F6] text-foreground font-sans">
+      {/* ── Internal Staff Bar (Logged-in Staff Only) ── */}
+      {user && (
+        <div className="bg-amber-950 text-amber-100 text-xs px-4 sm:px-8 py-2 flex flex-wrap items-center justify-between gap-2 border-b border-amber-900/60 shadow-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-bold tracking-wider text-[10px] uppercase bg-amber-800 text-amber-100 px-2 py-0.5 rounded">
+              Internal Staff Mode
+            </span>
+            <span className="text-amber-200 text-xs">
+              ID: #{product.id} • SKU: {product.supplierSku || product.sku || "—"} • Stock: {product.availableQuantity}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-amber-300 text-xs font-semibold">PRAO Supplier:</span>
+            <PraoMlLink product={product} showIcon={true} className="text-amber-200 hover:text-white" />
+            <Link href="/products" className="text-amber-300 hover:text-white underline text-xs">
+              Open Inventory Studio
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* ── Top Header ── */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-amber-100 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
@@ -145,7 +172,12 @@ export default function CatalogueDetail() {
           {/* Left Column: Image Gallery (7 Cols) */}
           <div className="lg:col-span-7 space-y-4">
             {/* Primary Large Image */}
-            <div className="aspect-square w-full rounded-2xl overflow-hidden bg-white border border-amber-100/90 shadow-sm relative group">
+            <div
+              onClick={() => setViewerOpen(true)}
+              className="aspect-square w-full rounded-2xl overflow-hidden bg-white border border-amber-100/90 shadow-sm relative group cursor-zoom-in"
+              title="Click to view full screen with high resolution"
+              data-testid="button-open-fullscreen-image"
+            >
               <img
                 src={images[activeImageIndex] || product.primaryImage}
                 alt={product.name}
@@ -156,6 +188,20 @@ export default function CatalogueDetail() {
                   {product.discountPercentage}% OFF
                 </div>
               )}
+
+              {/* Fullscreen Pill Button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setViewerOpen(true);
+                }}
+                className="absolute bottom-3.5 right-3.5 bg-black/60 hover:bg-black/85 text-white backdrop-blur-md text-xs font-medium px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-md transition-all opacity-85 group-hover:opacity-100 group-hover:scale-105 border border-white/20"
+                title="Expand to Fullscreen View"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
+                <span>Full Screen</span>
+              </button>
             </div>
 
             {/* Thumbnail Navigation */}
@@ -200,6 +246,11 @@ export default function CatalogueDetail() {
                     <AlertCircle className="w-3.5 h-3.5" />
                     Available on Backorder
                   </span>
+                )}
+                {user && (
+                  <div className="ml-auto flex items-center gap-1">
+                    <PraoMlLink product={product} showIcon={true} />
+                  </div>
                 )}
               </div>
 
@@ -268,6 +319,15 @@ export default function CatalogueDetail() {
                     <span className="text-neutral-500 block">Design</span>
                     <span className="font-semibold text-neutral-800">{product.design}</span>
                   </div>
+                  {user && (
+                    <div className="col-span-2 pt-2 border-t border-neutral-100 flex items-center justify-between">
+                      <span className="text-neutral-500">Internal Reference</span>
+                      <span className="font-mono text-neutral-800 flex items-center gap-2">
+                        <span>{product.supplierSku || product.sku || `#${product.id}`}</span>
+                        <PraoMlLink product={product} showIcon={true} />
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -337,6 +397,16 @@ export default function CatalogueDetail() {
             </div>
           </div>
         )}
+        {/* Fullscreen High-Resolution Image Viewer */}
+        <FullscreenImageViewer
+          isOpen={viewerOpen}
+          onClose={() => setViewerOpen(false)}
+          images={images}
+          initialIndex={activeImageIndex}
+          productTitle={product.name}
+          productPrice={product.price}
+          productCategory={product.category}
+        />
       </main>
     </div>
   );

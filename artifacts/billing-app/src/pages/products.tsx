@@ -48,10 +48,18 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, Edit, Trash2, Package, ChevronsUpDown, Check, X, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Package, ChevronsUpDown, Check, X, ChevronLeft, ChevronRight, Download, ShieldCheck, AlertTriangle, CheckCircle2, ExternalLink, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { DataTablePagination } from "@/components/common/data-table-pagination";
+import { PraoMlLink, getMatchingPraoUrl } from "@/lib/prao-link";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
@@ -71,11 +79,14 @@ export default function Products() {
   const [pageSize, setPageSize] = useState(100);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [deleteProductObj, setDeleteProductObj] = useState<any | null>(null);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [viewProduct, setViewProduct] = useState<any | null>(null);
+  const [verificationFilter, setVerificationFilter] = useState<string>("all");
 
   const { data, isLoading } = useListProducts(
-    { search: search || undefined, page, limit: pageSize },
-    { query: { queryKey: getListProductsQueryKey({ search: search || undefined, page, limit: pageSize }) } }
+    { search: search || undefined, page, limit: pageSize, verificationStatus: verificationFilter !== "all" ? verificationFilter : undefined } as any,
+    { query: { queryKey: ["products", search || undefined, page, pageSize, verificationFilter] } }
   );
 
   const { data: allProductsData } = useListProducts(
@@ -146,8 +157,22 @@ export default function Products() {
     deleteProduct.mutate(
       { id: deleteId },
       {
-        onSuccess: () => { toast({ title: "Product deleted" }); setDeleteId(null); queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() }); },
-        onError: () => toast({ title: "Failed to delete product", variant: "destructive" }),
+        onSuccess: () => {
+          toast({ title: "Product deleted" });
+          setDeleteId(null);
+          setDeleteProductObj(null);
+          queryClient.invalidateQueries({ queryKey: ["products"] });
+          queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
+        },
+        onError: (err: any) => {
+          toast({
+            title: "Cannot Delete Product",
+            description: err.response?.data?.error || "This product has sales history and cannot be deleted. Deactivate it instead.",
+            variant: "destructive",
+          });
+          setDeleteId(null);
+          setDeleteProductObj(null);
+        },
       }
     );
   };
@@ -160,6 +185,11 @@ export default function Products() {
           <p className="text-muted-foreground text-sm mt-1">Manage private product catalogue, stock levels, and pricing.</p>
         </div>
         <div className="flex items-center gap-2.5">
+          <Link href="/catalogue-accuracy">
+            <Button variant="outline" className="border-emerald-300 text-emerald-800 hover:bg-emerald-50 gap-1.5 font-semibold">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" /> Catalogue Accuracy
+            </Button>
+          </Link>
           <Link href="/importer">
             <Button variant="outline" className="border-amber-300 text-amber-800 hover:bg-amber-50 gap-1.5 font-semibold">
               <Download className="w-4 h-4" /> Import from Supplier
@@ -195,6 +225,25 @@ export default function Products() {
             </span>
           )}
         </div>
+
+        {/* Verification Status Filter */}
+        <Select
+          value={verificationFilter}
+          onValueChange={(val) => {
+            setVerificationFilter(val);
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="w-full sm:w-48 text-xs h-10">
+            <SelectValue placeholder="Verification Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Verification</SelectItem>
+            <SelectItem value="verified">Verified PRAO Only</SelectItem>
+            <SelectItem value="unverified">Unverified Non-PRAO</SelectItem>
+            <SelectItem value="delisted">Delisted on Supplier</SelectItem>
+          </SelectContent>
+        </Select>
 
         {/* Quick Select Combobox Dropdown */}
         <Popover open={searchDropdownOpen} onOpenChange={setSearchDropdownOpen}>
@@ -247,7 +296,7 @@ export default function Products() {
                     >
                       <div className="flex flex-col gap-0.5 max-w-[200px]">
                         <span className="font-semibold text-sm text-foreground truncate">{p.name}</span>
-                        <span className="text-xs text-muted-foreground truncate">{p.description || p.category || "Fashion Jewellery"}</span>
+                        <span className="text-xs text-muted-foreground truncate">{p.description || (p as any).category || "Fashion Jewellery"}</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <span className="text-xs font-mono font-bold text-primary">{formatCurrency(p.price)}</span>
@@ -279,37 +328,96 @@ export default function Products() {
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-muted/40">
-                  <th className="text-left px-6 py-3 font-medium text-muted-foreground">Name</th>
-                  <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Description</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Price</th>
-                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Stock</th>
-                  <th className="text-right px-6 py-3 font-medium text-muted-foreground">Actions</th>
+                <tr className="border-b bg-muted/40 text-xs">
+                  <th className="text-left px-6 py-3 font-semibold text-muted-foreground">Product</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground hidden sm:table-cell">Source / Verification</th>
+                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Price</th>
+                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">Stock</th>
+                  <th className="text-center px-4 py-3 font-semibold text-muted-foreground hidden md:table-cell">Sales</th>
+                  <th className="text-right px-6 py-3 font-semibold text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {data.data.map((p) => (
-                  <tr key={p.id} className="hover:bg-muted/30 transition-colors" data-testid={`row-product-${p.id}`}>
-                    <td className="px-6 py-3 font-medium">{p.name}</td>
-                    <td className="px-4 py-3 text-muted-foreground hidden md:table-cell max-w-[240px] truncate">{p.description ? p.description.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() : "—"}</td>
-                    <td className="px-4 py-3 text-right font-medium">{formatCurrency(p.price)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <Badge variant={p.availableQuantity === 0 ? "destructive" : p.availableQuantity <= 2 ? "secondary" : "outline"}>
-                        {p.availableQuantity === 0 ? "Out of stock" : `${p.availableQuantity} units`}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-3">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button size="icon" variant="ghost" onClick={() => openEdit(p)} data-testid={`button-edit-product-${p.id}`}>
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteId(p.id)} data-testid={`button-delete-product-${p.id}`}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {data.data.map((p) => {
+                  const hasSales = Number((p as any).orderCount || 0) > 0;
+                  const isVerified = Boolean((p as any).isVerified);
+                  const sourceUrl = (p as any).sourceUrl;
+                  return (
+                    <tr key={p.id} className="hover:bg-muted/30 transition-colors text-xs" data-testid={`row-product-${p.id}`}>
+                      <td className="px-6 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-foreground text-sm">{p.name}</span>
+                          <PraoMlLink product={p} />
+                        </div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1 flex-wrap">
+                          <span>ID: #{p.id}</span>
+                          <span>•</span>
+                          <span>SKU: {(p as any).sku || "—"}</span>
+                          <span>•</span>
+                          <span>{(p as any).category || "Jewellery"}</span>
+                          <PraoMlLink product={p} showIcon={false} />
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 hidden sm:table-cell">
+                        <div className="flex items-center gap-1.5">
+                          {isVerified ? (
+                            <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-300 text-[10px] gap-1 font-semibold">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              Verified (PRAO)
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-300 text-[10px] gap-1 font-semibold">
+                              <AlertTriangle className="w-3 h-3 text-amber-600" />
+                              Unverified
+                            </Badge>
+                          )}
+                          <PraoMlLink product={p} showIcon={true} />
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium font-mono text-sm">{formatCurrency(p.price)}</td>
+                      <td className="px-4 py-3 text-right">
+                        <Badge variant={p.availableQuantity === 0 ? "destructive" : p.availableQuantity <= 2 ? "secondary" : "outline"} className="text-[10px]">
+                          {p.availableQuantity === 0 ? "Out of stock" : `${p.availableQuantity} units`}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-center hidden md:table-cell">
+                        {hasSales ? (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px]">
+                            {(p as any).orderCount} order(s)
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground/60 text-xs">0</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button size="icon" variant="ghost" onClick={() => setViewProduct(p)} title="View Internal Details" data-testid={`button-view-product-${p.id}`}>
+                            <Eye className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => openEdit(p)} data-testid={`button-edit-product-${p.id}`}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className={hasSales ? "opacity-30 cursor-not-allowed text-muted-foreground" : "text-destructive hover:text-destructive"}
+                            disabled={hasSales}
+                            onClick={() => {
+                              if (!hasSales) {
+                                setDeleteId(p.id);
+                                setDeleteProductObj(p);
+                              }
+                            }}
+                            title={hasSales ? `Protected sales record: Cannot delete (linked to ${(p as any).orderCount} orders)` : "Delete product"}
+                            data-testid={`button-delete-product-${p.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -335,8 +443,25 @@ export default function Products() {
       <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditProduct(null); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editProduct ? "Edit Product" : "Add Product"}</DialogTitle>
+            <div className="flex items-center justify-between pr-6">
+              <DialogTitle>{editProduct ? `Edit Product #${editProduct.id}` : "Add Product"}</DialogTitle>
+              {editProduct && <PraoMlLink product={editProduct} showIcon={true} className="text-xs" />}
+            </div>
           </DialogHeader>
+          {editProduct && (
+            <div className="bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/40 rounded-lg p-2.5 text-xs flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-muted-foreground">SKU: {(editProduct as any).sku || "—"}</span>
+                {(editProduct as any).supplierSku && (
+                  <span className="text-amber-800 dark:text-amber-300 font-mono">PRAO: {(editProduct as any).supplierSku}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-muted-foreground">Supplier:</span>
+                <PraoMlLink product={editProduct} showIcon={true} className="font-semibold text-xs" />
+              </div>
+            </div>
+          )}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField control={form.control} name="name" render={({ field }) => (
@@ -380,15 +505,263 @@ export default function Products() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+      {/* ── Internal Product Details Modal ── */}
+      <Dialog open={!!viewProduct} onOpenChange={(open) => !open && setViewProduct(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between pr-6">
+              <div className="flex items-center gap-2">
+                <DialogTitle className="font-serif text-lg font-bold">
+                  Internal Product Details
+                </DialogTitle>
+                <span className="font-mono text-xs text-muted-foreground">
+                  #{viewProduct?.id}
+                </span>
+                {viewProduct?.isVerified ? (
+                  <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-300 text-[10px] gap-1 font-semibold">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    Verified PRAO
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-300 text-[10px] gap-1 font-semibold">
+                    <AlertTriangle className="w-3 h-3 text-amber-600" />
+                    Unverified
+                  </Badge>
+                )}
+              </div>
+              <PraoMlLink product={viewProduct} showIcon={true} className="text-xs" />
+            </div>
+          </DialogHeader>
+
+          {viewProduct && (
+            <div className="space-y-4 text-xs mt-2">
+              {/* Top Summary Card */}
+              <div className="flex flex-col sm:flex-row gap-4 p-3 bg-muted/30 rounded-xl border">
+                {viewProduct.images?.length > 0 ? (
+                  <img
+                    src={viewProduct.images[0]}
+                    alt={viewProduct.name}
+                    className="w-24 h-24 object-cover rounded-lg border bg-white shrink-0 mx-auto sm:mx-0"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-lg border bg-muted flex items-center justify-center shrink-0 mx-auto sm:mx-0">
+                    <Package className="w-8 h-8 opacity-40" />
+                  </div>
+                )}
+                <div className="space-y-1.5 flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-semibold text-sm text-foreground leading-tight">
+                      {viewProduct.name}
+                    </h3>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
+                    <span>Category: <strong className="text-foreground">{viewProduct.category || "Jewellery"}</strong></span>
+                    {viewProduct.subcategory && <span>• Subcategory: <strong className="text-foreground">{viewProduct.subcategory}</strong></span>}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 pt-1">
+                    <div className="font-mono">
+                      <span className="text-muted-foreground text-[11px] block">Selling Price</span>
+                      <span className="text-sm font-bold text-primary">{formatCurrency(viewProduct.price)}</span>
+                    </div>
+                    {viewProduct.compareAtPrice > 0 && (
+                      <div className="font-mono">
+                        <span className="text-muted-foreground text-[11px] block">Compare Price</span>
+                        <span className="text-xs line-through text-muted-foreground">{formatCurrency(viewProduct.compareAtPrice)}</span>
+                      </div>
+                    )}
+                    <div className="font-mono">
+                      <span className="text-muted-foreground text-[11px] block">Stock Available</span>
+                      <span className="text-xs font-semibold">{viewProduct.availableQuantity} units</span>
+                    </div>
+                    <div className="font-mono">
+                      <span className="text-muted-foreground text-[11px] block">Sales Orders</span>
+                      <span className="text-xs font-semibold">{viewProduct.orderCount || 0} order(s)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Private PRAO Matching & Supplier Integrity Section */}
+              <div className="p-3.5 bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/40 rounded-xl space-y-2.5">
+                <div className="flex items-center justify-between border-b border-amber-200/60 pb-2">
+                  <span className="font-semibold text-xs text-amber-900 dark:text-amber-200 uppercase tracking-wider flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-amber-600" />
+                    Supplier Source &amp; Private Matching Record
+                  </span>
+                  <PraoMlLink product={viewProduct} showIcon={true} className="font-bold text-xs" />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-muted-foreground block text-[11px]">Supplier SKU</span>
+                    <span className="font-mono font-medium text-foreground">
+                      {viewProduct.supplierSku || "—"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-[11px]">Shopify Supplier Product ID</span>
+                    <span className="font-mono font-medium text-foreground">
+                      {viewProduct.supplierProductId || "—"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-[11px]">Internal Store SKU</span>
+                    <span className="font-mono font-medium text-foreground">
+                      {viewProduct.sku || "—"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-[11px]">Supplier Cost</span>
+                    <span className="font-mono font-medium text-foreground">
+                      {viewProduct.supplierCost ? formatCurrency(viewProduct.supplierCost) : "—"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Direct Private PRAO URL with discreet ML indicator */}
+                <div className="pt-2 border-t border-amber-200/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-semibold text-amber-900 dark:text-amber-200">
+                      Private Matching Link:
+                    </span>
+                    <PraoMlLink product={viewProduct} showIcon={true} className="text-xs font-semibold" />
+                  </div>
+                  {getMatchingPraoUrl(viewProduct) ? (
+                    <a
+                      href={getMatchingPraoUrl(viewProduct)!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-mono text-amber-800 dark:text-amber-300 hover:text-amber-950 dark:hover:text-white underline decoration-dotted truncate max-w-sm"
+                      title="Open matching original PRAO product page in a new tab"
+                    >
+                      <span className="truncate">{getMatchingPraoUrl(viewProduct)}</span>
+                      <ExternalLink className="w-3 h-3 shrink-0" />
+                    </a>
+                  ) : (
+                    <span className="text-[11px] text-muted-foreground italic">
+                      No matching original PRAO record mapped
+                    </span>
+                  )}
+                </div>
+
+                {viewProduct.verificationNotes && (
+                  <div className="text-[11px] text-muted-foreground pt-1">
+                    Verification Note: {viewProduct.verificationNotes}
+                  </div>
+                )}
+              </div>
+
+              {/* Physical Jewellery Specifications */}
+              <div className="p-3 bg-muted/20 border rounded-xl space-y-2">
+                <span className="font-semibold text-xs text-foreground uppercase tracking-wider block border-b pb-1.5">
+                  Jewellery Specifications
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div>
+                    <span className="text-muted-foreground block text-[11px]">Material</span>
+                    <span className="font-medium text-foreground">{viewProduct.material || "—"}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-[11px]">Color / Finish</span>
+                    <span className="font-medium text-foreground">{viewProduct.color || "—"}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-[11px]">Style</span>
+                    <span className="font-medium text-foreground">{viewProduct.style || "—"}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-[11px]">Design</span>
+                    <span className="font-medium text-foreground">{viewProduct.design || "—"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Description */}
+              {viewProduct.description && (
+                <div className="p-3 bg-muted/10 border rounded-xl space-y-1">
+                  <span className="font-semibold text-xs text-foreground block">
+                    Product Description
+                  </span>
+                  <p className="text-muted-foreground text-xs leading-relaxed line-clamp-4">
+                    {viewProduct.description}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-2 border-t pt-3">
+            <div className="flex items-center gap-2">
+              {viewProduct?.isVerified && (
+                <Link href={`/catalogue/${viewProduct.id}`} target="_blank">
+                  <Button variant="outline" size="sm" className="text-xs gap-1.5">
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Open Customer Page
+                  </Button>
+                </Link>
+              )}
+              {getMatchingPraoUrl(viewProduct) && (
+                <a
+                  href={getMatchingPraoUrl(viewProduct)!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button variant="outline" size="sm" className="text-xs border-amber-300 text-amber-800 hover:bg-amber-50 gap-1.5">
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Open PRAO (ML)
+                  </Button>
+                </a>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setViewProduct(null)}
+              >
+                Close
+              </Button>
+              <Button
+                size="sm"
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+                onClick={() => {
+                  const p = viewProduct;
+                  setViewProduct(null);
+                  openEdit(p);
+                }}
+              >
+                <Edit className="w-3.5 h-3.5 mr-1" />
+                Edit Product
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deleteId} onOpenChange={() => { setDeleteId(null); setDeleteProductObj(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Product</AlertDialogTitle>
-            <AlertDialogDescription>This will permanently delete the product. This action cannot be undone.</AlertDialogDescription>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Delete Product
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2 text-xs">
+              <p>Are you sure you want to permanently delete this product?</p>
+              {deleteProductObj && (
+                <div className="p-2.5 bg-muted rounded font-medium text-foreground">
+                  #{deleteProductObj.id} — {deleteProductObj.name} ({formatCurrency(deleteProductObj.price)})
+                </div>
+              )}
+              <p className="text-muted-foreground">
+                This item has <strong>0 customer order references</strong>. This action cannot be undone.
+              </p>
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Confirm Delete
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

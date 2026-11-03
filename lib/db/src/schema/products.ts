@@ -37,6 +37,13 @@ export const productsTable = pgTable("products", {
   supplierProductId: text("supplier_product_id").default(""),
   supplierSku: text("supplier_sku").default(""),
 
+  // Supplier Verification & Audit Tracking
+  isVerified: boolean("is_verified").default(false).notNull(),
+  sourceUrl: text("source_url").default(""),
+  verificationStatus: text("verification_status").default("unverified").notNull(),
+  verificationNotes: text("verification_notes").default(""),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

@@ -80,16 +80,21 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   loginAttempts.delete(ip);
 
   req.session.userId = user.id;
-
-  res.json({
-    user: {
-      id: user.id,
-      name: user.name,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-      isActive: user.isActive,
-    },
+  req.session.save((err) => {
+    if (err) {
+      res.status(500).json({ error: "Failed to persist login session" });
+      return;
+    }
+    res.json({
+      user: {
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+      },
+    });
   });
 });
 

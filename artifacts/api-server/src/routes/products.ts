@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, productsTable, categoriesTable, inventoryTable } from "@workspace/db";
-import { eq, ilike, sql, desc, and } from "drizzle-orm";
+import { db, productsTable, categoriesTable, inventoryTable, orderItemsTable } from "@workspace/db";
+import { eq, ilike, sql, desc, and, or, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin, getSessionUser } from "../middlewares/auth";
 import { z } from "zod";
 
@@ -12,6 +12,7 @@ const listProductsQuery = z.object({
   limit: z.coerce.number().optional().default(20),
   category: z.string().optional(),
   metalType: z.string().optional(),
+  verificationStatus: z.string().optional(), // 'all' | 'verified' | 'unverified' | 'delisted'
 });
 
 const createProductSchema = z.object({
@@ -44,6 +45,10 @@ const createProductSchema = z.object({
   supplierSource: z.string().optional().default(""),
   supplierProductId: z.string().optional().default(""),
   supplierSku: z.string().optional().default(""),
+  isVerified: z.boolean().optional().default(false),
+  sourceUrl: z.string().optional().default(""),
+  verificationStatus: z.string().optional().default("unverified"),
+  verificationNotes: z.string().optional().default(""),
 });
 
 const updateProductSchema = createProductSchema.partial();
@@ -59,6 +64,11 @@ function formatProduct(p: any) {
     stoneWeight: Number(p.stoneWeight || 0),
     makingChargesValue: Number(p.makingChargesValue || 0),
     images: Array.isArray(p.images) ? p.images : [],
+    isVerified: Boolean(p.isVerified),
+    sourceUrl: p.sourceUrl || "",
+    verificationStatus: p.verificationStatus || "unverified",
+    verificationNotes: p.verificationNotes || "",
+    orderCount: Number(p.orderCount || 0),
   };
 }
 
@@ -66,6 +76,7 @@ router.get("/products", requireAuth, async (req, res): Promise<void> => {
   const query = listProductsQuery.safeParse(req.query);
   const search = query.success ? query.data.search : undefined;
   const category = query.success ? query.data.category : undefined;
+  const verificationStatus = query.success ? query.data.verificationStatus : undefined;
   const page = query.success ? query.data.page : 1;
   const limit = Math.min(query.success ? (query.data.limit || 100) : 100, 500);
   const offset = (page - 1) * limit;
@@ -76,6 +87,15 @@ router.get("/products", requireAuth, async (req, res): Promise<void> => {
   }
   if (category && category !== "all") {
     conditions.push(eq(productsTable.category, category));
+  }
+  if (verificationStatus && verificationStatus !== "all") {
+    if (verificationStatus === "verified") {
+      conditions.push(eq(productsTable.isVerified, true));
+    } else if (verificationStatus === "unverified") {
+      conditions.push(or(eq(productsTable.isVerified, false), eq(productsTable.verificationStatus, "unverified"))!);
+    } else if (verificationStatus === "delisted") {
+      conditions.push(eq(productsTable.verificationStatus, "delisted"));
+    }
   }
 
   const whereClause = conditions.length ? and(...conditions) : undefined;
@@ -93,8 +113,27 @@ router.get("/products", requireAuth, async (req, res): Promise<void> => {
     .limit(limit)
     .offset(offset);
 
+  // Fetch sales history (order counts) for returned products
+  const productIds = data.map((p) => p.id);
+  const orderCountsMap = new Map<number, number>();
+
+  if (productIds.length > 0) {
+    const orderRows = await db
+      .select({
+        productId: orderItemsTable.productId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(orderItemsTable)
+      .where(inArray(orderItemsTable.productId, productIds))
+      .groupBy(orderItemsTable.productId);
+
+    for (const r of orderRows) {
+      orderCountsMap.set(r.productId, r.count);
+    }
+  }
+
   res.json({
-    data: data.map(formatProduct),
+    data: data.map((p) => formatProduct({ ...p, orderCount: orderCountsMap.get(p.id) || 0 })),
     total: totalRow.count,
     page,
     limit,
@@ -142,6 +181,11 @@ router.post("/products", requireAdmin, async (req, res): Promise<void> => {
       supplierSource: body.supplierSource || "",
       supplierProductId: body.supplierProductId || "",
       supplierSku: body.supplierSku || "",
+      isVerified: body.isVerified ?? false,
+      sourceUrl: body.sourceUrl || "",
+      verificationStatus: body.verificationStatus || (body.isVerified ? "verified" : "unverified"),
+      verificationNotes: body.verificationNotes || "",
+      verifiedAt: body.isVerified ? new Date() : null,
     })
     .returning();
 
@@ -233,6 +277,15 @@ router.patch("/products/:id", requireAdmin, async (req, res): Promise<void> => {
   if (body.isFeatured !== undefined) updateData.isFeatured = body.isFeatured;
   if (body.isActive !== undefined) updateData.isActive = body.isActive;
   if (body.supplierCost !== undefined) updateData.supplierCost = String(body.supplierCost);
+  if (body.isVerified !== undefined) {
+    updateData.isVerified = body.isVerified;
+    if (body.isVerified && !existingProduct.isVerified) {
+      updateData.verifiedAt = new Date();
+    }
+  }
+  if (body.sourceUrl !== undefined) updateData.sourceUrl = body.sourceUrl;
+  if (body.verificationStatus !== undefined) updateData.verificationStatus = body.verificationStatus;
+  if (body.verificationNotes !== undefined) updateData.verificationNotes = body.verificationNotes;
 
   const [product] = await db
     .update(productsTable)
@@ -283,6 +336,26 @@ router.delete("/products/:id", requireAdmin, async (req, res): Promise<void> => 
     res.status(400).json({ error: "Invalid id" });
     return;
   }
+
+  // CRITICAL REQUIREMENT: Never delete sales history or existing records automatically
+  // Check if product is referenced in customer orders
+  const orderCheck = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(orderItemsTable)
+    .where(eq(orderItemsTable.productId, id));
+
+  const orderCount = orderCheck[0]?.count || 0;
+  if (orderCount > 0) {
+    res.status(400).json({
+      error: `PROTECTED RECORD: Cannot delete this product because it has sales history (linked to ${orderCount} customer invoice item(s)). Deactivate the product instead to safely hide it from active listings without corrupting financial records.`,
+      hasSalesHistory: true,
+      orderCount,
+    });
+    return;
+  }
+
+  // Remove linked inventory logs before product deletion (if no sales history exists)
+  await db.delete(inventoryTable).where(eq(inventoryTable.productId, id));
 
   const [product] = await db
     .delete(productsTable)

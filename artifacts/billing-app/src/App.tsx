@@ -18,6 +18,7 @@ import Users from "@/pages/users";
 import Settings from "@/pages/settings";
 import ImporterStudio from "@/pages/importer";
 import CategoriesPage from "@/pages/categories";
+import CatalogueAccuracyPage from "@/pages/catalogue-accuracy";
 import Catalogue from "@/pages/catalogue";
 import CatalogueDetail from "@/pages/catalogue/detail";
 
@@ -80,6 +81,7 @@ function Router() {
       {/* ── Protected Management Portal Routes ── */}
       <Route path="/dashboard"><ProtectedRoute component={Dashboard} /></Route>
       <Route path="/importer"><ProtectedRoute component={ImporterStudio} adminOnly /></Route>
+      <Route path="/catalogue-accuracy"><ProtectedRoute component={CatalogueAccuracyPage} adminOnly /></Route>
       <Route path="/categories"><ProtectedRoute component={CategoriesPage} adminOnly /></Route>
       <Route path="/products"><ProtectedRoute component={Products} adminOnly /></Route>
       <Route path="/inventory"><ProtectedRoute component={Inventory} adminOnly /></Route>

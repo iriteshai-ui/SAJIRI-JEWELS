@@ -25,7 +25,7 @@ const pool = new Pool({
 });
 
 // Category mapping helper
-function mapToCategory(type = "", tags = []) {
+function mapToCategory(type: string = "", tags: string[] = []): string {
   const combined = `${type} ${tags.join(" ")}`.toLowerCase();
   if (combined.includes("earring") || combined.includes("jhumka") || combined.includes("stud") || combined.includes("bali") || combined.includes("hoop")) {
     return "Earrings";
@@ -61,7 +61,7 @@ function mapToCategory(type = "", tags = []) {
 }
 
 // Clean title: transforms "PRAO" into "SAJRI"
-function cleanTitle(rawTitle) {
+function cleanTitle(rawTitle: string): string {
   let title = (rawTitle || "").replace(/\bprao\b/gi, "SAJRI").trim();
   if (!/^sajri\b/i.test(title)) {
     title = `SAJRI ${title}`;
@@ -73,7 +73,7 @@ function cleanTitle(rawTitle) {
 }
 
 // Clean description: transforms "PRAO" into "SAJRI"
-function cleanDescription(rawHtml) {
+function cleanDescription(rawHtml: string): string {
   if (!rawHtml) return "";
   return rawHtml
     .replace(/\bprao\b/gi, "SAJRI")
@@ -81,7 +81,7 @@ function cleanDescription(rawHtml) {
     .trim();
 }
 
-function inferMaterial(title, tags = []) {
+function inferMaterial(title: string, tags: string[] = []): string {
   const combined = `${title} ${tags.join(" ")}`.toLowerCase();
   if (combined.includes("anti-tarnish") || combined.includes("stainless steel")) {
     return "Anti-Tarnish Stainless Steel (Waterproof & Hypoallergenic)";
@@ -95,7 +95,7 @@ function inferMaterial(title, tags = []) {
   return "Premium Anti-Tarnish Jewellery Alloy";
 }
 
-async function fetchPage(page, limit = 100, retries = 5) {
+async function fetchPage(page: number, limit = 100, retries = 5) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const res = await fetch(`https://prao.com/products.json?limit=${limit}&page=${page}`, {
@@ -117,9 +117,9 @@ async function fetchPage(page, limit = 100, retries = 5) {
         return null;
       }
 
-      const data = await res.json();
+      const data = (await res.json()) as any;
       return data.products || [];
-    } catch (e) {
+    } catch (e: any) {
       console.error(`Page ${page} error:`, e.message);
       await new Promise((r) => setTimeout(r, 2000));
     }
@@ -208,9 +208,9 @@ async function main() {
         const catName = mapToCategory(p.product_type, p.tags);
         const categoryId = categoryMap.get(catName.toLowerCase()) || null;
         const material = inferMaterial(p.title, p.tags);
-        const color = p.options?.find((o) => o.name?.toUpperCase() === "COLOR")?.values?.[0] || primaryVariant.title || "Gold";
+        const color = p.options?.find((o: any) => o.name?.toUpperCase() === "COLOR")?.values?.[0] || primaryVariant.title || "Gold";
         const sku = `SJ-${p.id}`;
-        const images = (p.images || []).map((img) => img.src);
+        const images = (p.images || []).map((img: any) => img.src);
         const initialQty = 5;
 
         const insertRes = await client.query(

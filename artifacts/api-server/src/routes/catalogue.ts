@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, productsTable, categoriesTable } from "@workspace/db";
 import { eq, ilike, and, gte, lte, sql, desc, or } from "drizzle-orm";
+import { getSessionUser } from "../middlewares/auth";
 
 const router = Router();
 
@@ -32,11 +33,13 @@ function formatPublicProduct(p: any) {
     primaryImage: images[0] || "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=800&q=80",
     secondaryImage: images[1] || images[0] || null,
     isFeatured: Boolean(p.isFeatured),
+    isVerified: Boolean(p.isVerified),
     createdAt: p.createdAt,
   };
 }
 
 // GET /api/catalogue/products (Public)
+// Only returns verified and active catalogue items to guarantee authenticity
 router.get("/catalogue/products", async (req, res): Promise<void> => {
   try {
     const search = req.query.search as string | undefined;
@@ -50,7 +53,11 @@ router.get("/catalogue/products", async (req, res): Promise<void> => {
     const limit = Math.min(Number(req.query.limit) || 100, 500);
     const offset = (page - 1) * limit;
 
-    const conditions = [eq(productsTable.isActive, true)];
+    // Filter strictly for active AND verified items
+    const conditions = [
+      eq(productsTable.isActive, true),
+      eq(productsTable.isVerified, true),
+    ];
 
     if (category && category !== "all") {
       conditions.push(ilike(productsTable.category, category));
@@ -128,28 +135,39 @@ router.get("/catalogue/products/:id", async (req, res): Promise<void> => {
     const [product] = await db
       .select()
       .from(productsTable)
-      .where(and(eq(productsTable.id, id), eq(productsTable.isActive, true)));
+      .where(and(eq(productsTable.id, id), eq(productsTable.isActive, true), eq(productsTable.isVerified, true)));
 
     if (!product) {
       res.status(404).json({ error: "Product not found" });
       return;
     }
 
-    // Also fetch related products in same category
+    // Also fetch related products in same category (strictly verified and active)
     const related = await db
       .select()
       .from(productsTable)
       .where(
         and(
           eq(productsTable.isActive, true),
+          eq(productsTable.isVerified, true),
           eq(productsTable.category, product.category),
           sql`${productsTable.id} != ${id}`
         )
       )
       .limit(4);
 
+    // Format product details; attach private supplier metadata ONLY for logged-in staff
+    const user = await getSessionUser(req);
+    const formatted = formatPublicProduct(product);
+    if (user) {
+      (formatted as any).sourceUrl = product.sourceUrl;
+      (formatted as any).supplierSku = product.supplierSku;
+      (formatted as any).supplierProductId = product.supplierProductId;
+      (formatted as any).sku = product.sku;
+    }
+
     res.json({
-      product: formatPublicProduct(product),
+      product: formatted,
       related: related.map(formatPublicProduct),
     });
   } catch (error) {
@@ -163,7 +181,7 @@ router.get("/catalogue/featured", async (_req, res): Promise<void> => {
     const featured = await db
       .select()
       .from(productsTable)
-      .where(and(eq(productsTable.isActive, true)))
+      .where(and(eq(productsTable.isActive, true), eq(productsTable.isVerified, true)))
       .orderBy(desc(productsTable.isFeatured), desc(productsTable.id))
       .limit(8);
 
